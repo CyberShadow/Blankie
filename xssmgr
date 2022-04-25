@@ -825,6 +825,7 @@ function main() {
 			do
 				sleep 0.1
 			done
+			xssmgr_log 'Daemon stopped.'
 			;;
 		status)
 			xssmgr_query "$@"
