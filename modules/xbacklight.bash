@@ -24,7 +24,7 @@ function xssmgr_mod_xbacklight() {
 			if [[ -z "$xssmgr_xbacklight_pid" ]]
 			then
 				xssmgr_xbacklight_brightness=$(xbacklight "${xssmgr_xbacklight_args[@]}" -getf)
-				xbacklight "${xssmgr_xbacklight_args[@]}" "${xssmgr_xbacklight_set_args[@]}" | {
+				xbacklight "${xssmgr_xbacklight_args[@]}" -set 0 "${xssmgr_xbacklight_set_args[@]}" | {
 					# Get notified when it exits, so we can forget the PID
 					# (so we later don't kill an innocent process due to
 					# PID reuse).
@@ -46,7 +46,7 @@ function xssmgr_mod_xbacklight() {
 			if [[ -n "$xssmgr_xbacklight_brightness" ]]
 			then
 				xssmgr_logv 'mod_xbacklight: Restoring original brightness (%s).' "$xssmgr_xbacklight_brightness"
-				xbacklight "${xssmgr_xbacklight_args[@]}" -set "$xssmgr_xbacklight_brightness" -steps 1
+				xbacklight "${xssmgr_xbacklight_args[@]}" -set "$xssmgr_xbacklight_brightness" -steps 1 -time 0
 				xssmgr_xbacklight_brightness=
 			fi
 			;;
