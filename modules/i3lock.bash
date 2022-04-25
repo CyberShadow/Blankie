@@ -30,10 +30,8 @@ function xssmgr_mod_i3lock() {
 
 				# Start a reader from the FIFO.
                 # When it exits, we'll know that i3lock exited.
-				{
-					xssmgr_i3lock_reader &
-					xssmgr_i3lock_cat_pid=$!
-				} < "$fifo"
+				xssmgr_i3lock_reader < "$fifo" &
+				xssmgr_i3lock_cat_pid=$!
 
 				# Open the write end of the FIFO.
 				# This file descriptor will be inherited by i3lock.
@@ -54,7 +52,7 @@ function xssmgr_mod_i3lock() {
 				wait $xssmgr_i3lock_outer_pid
 
 				# Find the inner process.
-				xssmgr_i3lock_inner_pid=$(ps --ppid $xssmgr_i3lock_outer_pid -C ps -o pid)
+				xssmgr_i3lock_inner_pid=$(ps --ppid $xssmgr_i3lock_outer_pid -C i3lock -o pid | tail -n -1)
 				if ! kill -0 "$xssmgr_i3lock_inner_pid"
 				then
 					xssmgr_log 'mod_i3lock: Failed to find the PID of the forked i3lock process.'
