@@ -13,6 +13,7 @@ function xssmgr_mod_dpms() {
 			;;
 		stop)
 			xset dpms force on
+			xset -dpms  # Disable default settings - we control DPMS
 			;;
 	esac
 }
