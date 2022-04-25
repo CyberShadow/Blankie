@@ -681,6 +681,8 @@ function xssmgr_daemon_command() {
 				echo 'Already unlocked.' > "$2"
 			fi
 			;;
+		*)
+			xssmgr_log 'Ignoring unknown daemon command: %q' "$1"
 	esac
 }
 
