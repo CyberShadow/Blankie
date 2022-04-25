@@ -638,11 +638,11 @@ function xssmgr_reconfigure() {
 }
 
 # Reload the configuration file and reconfigure.
-function xssmgr_reload() {
-	xssmgr_log 'Got SIGHUP - reloading configuration.'
-
-	xssmgr_load_config
-	xssmgr_reconfigure
+function xssmgr_sighup() {
+	xssmgr_log 'Got SIGHUP - asynchronously requesting reload.'
+	# Make sure that the logic runs from the main loop, and not an
+	# arbitrary place in the script.
+	xssmgr_notify reload &
 }
 
 # Handle one daemon command.
@@ -667,6 +667,11 @@ function xssmgr_daemon_command() {
 		stop)
 			xssmgr_log 'Daemon is exiting.'
 			exit  # Clean-up will be performed by the exit trap.
+			;;
+		reload)
+			xssmgr_log 'Reloading configuration.'
+			xssmgr_load_config
+			xssmgr_reconfigure
 			;;
 		module) # Synchronously execute module subcommand, in the daemon process
 			xssmgr_module_command "${@:2}"
@@ -723,7 +728,7 @@ function xssmgr_daemon_loop() {
 	trap xssmgr_daemon_shutdown EXIT
 
 	# Reload the configuration when receiving a SIGHUP.
-	trap xssmgr_reload SIGHUP
+	trap xssmgr_sighup SIGHUP
 
 	# Create PID file.
 	printf %d $BASHPID > "$xssmgr_pid_file"
@@ -836,6 +841,9 @@ function main() {
 				sleep 0.1
 			done
 			xssmgr_log 'Daemon stopped.'
+			;;
+		reload)
+			xssmgr_notify "$@"
 			;;
 		status)
 			xssmgr_query "$@"
