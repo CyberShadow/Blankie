@@ -641,6 +641,9 @@ function xssmgr_reload() {
 # Handle one daemon command.
 function xssmgr_daemon_command() {
 	case "$1" in
+		ping)
+			echo 'pong' > "$2"
+			;;
 		status)
 			{
 				printf -- 'Currently locked: %d\n' $xssmgr_locked
@@ -698,7 +701,7 @@ function xssmgr_daemon_shutdown() {
 	rm "$XSSMGR_FIFO"
 
 	# Delete PID file. We are exiting.
-	rm "$xssmgr_pid_file"
+	rm -f "$xssmgr_pid_file"
 }
 
 # Daemon main event loop.
@@ -712,11 +715,15 @@ function xssmgr_daemon_loop() {
 	# Create PID file.
 	printf %d $BASHPID > "$xssmgr_pid_file"
 
+	# Start on-boot modules.
+	xssmgr_reconfigure
+
 	while true
 	do
-		read -r -a command < "$XSSMGR_FIFO"
-		xssmgr_logv 'Got command: %q' "${command[0]}"
-		xssmgr_daemon_command "${command[@]}"
+		local -a xssmgr_command
+		read -r -a xssmgr_command < "$XSSMGR_FIFO"
+		xssmgr_logv 'Got command: %q' "${xssmgr_command[0]}"
+		xssmgr_daemon_command "${xssmgr_command[@]}"
 	done
 }
 
@@ -741,18 +748,29 @@ function xssmgr_daemon() {
 	# Create the event funnel FIFO
 	mkfifo -m 600 "$XSSMGR_FIFO"
 
-	# Start on-boot modules.
-	# Do this before forking so that we can communicate if our
-	# start-up was successful.
-	xssmgr_reconfigure
+	# Queue up a command for the daemon. If it finishes before the
+	# daemon process, it has started successfully.
+	# shellcheck disable=SC2265
+	test "$(xssmgr_query ping)" == pong &
+	local xssmgr_ping_pid=$!
 
 	# Now, fork away the daemon main loop.
 	xssmgr_daemon_loop &
+	local xssmgr_daemon_pid=$!
 
 	# Clear our exit trap, as it should now run in the main loop subshell.
 	trap '' EXIT
 
-	xssmgr_log 'Daemon started on %q.' "$DISPLAY"
+	# Wait for the daemon to finish starting up.
+	local xssmgr_first_pid
+	if wait -n -p xssmgr_first_pid "$xssmgr_ping_pid" "$xssmgr_daemon_pid" &&
+			[[ "$xssmgr_first_pid" -eq "$xssmgr_ping_pid" ]]
+	then
+		xssmgr_log 'Daemon started on %q (PID %d).' "$DISPLAY" "$xssmgr_daemon_pid"
+	else
+		xssmgr_log 'Daemon start-up failed.'
+		exit 1
+	fi
 }
 
 # -----------------------------------------------------------------------------
