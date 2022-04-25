@@ -552,6 +552,9 @@ function xssmgr_module_command() {
 # Start or stop modules, synchronizing xssmgr_running_modules
 # against xssmgr_wanted_modules.
 function xssmgr_start_stop_modules() {
+	xssmgr_logv 'Running modules: %s' "${xssmgr_running_modules[*]}"
+	xssmgr_logv 'Wanted  modules: %s' "${xssmgr_wanted_modules[*]}"
+
 	# Because modules may themselves start or stop other modules when
 	# they are started or stopped, support recursion by performing one
 	# operation at a time, and recursing to restart the loop until
@@ -589,6 +592,7 @@ function xssmgr_start_stop_modules() {
 	done
 
 	# If we reached this point, there is no more work to do.
+	xssmgr_logv 'Modules are synchronized.'
 }
 
 # Start or stop modules according to the current circumstances.
@@ -609,7 +613,9 @@ function xssmgr_update_modules() {
 		sort |
 		while read -r key
 		do
-			${xssmgr_module_selectors[$key]}
+			local xssmgr_module_selector=${xssmgr_module_selectors[$key]}
+			xssmgr_logv 'Calling module selector: %q' "$xssmgr_module_selector"
+			"$xssmgr_module_selector"
 		done
 
 	# 2. Start/stop modules accordingly.
@@ -692,7 +698,7 @@ function xssmgr_daemon_command() {
 
 # Exit trap.
 function xssmgr_daemon_shutdown() {
-	xssmgr_logv 'Exiting - shutting down.'
+	xssmgr_logv 'Shutting down.'
 
 	# Stop all modules.
 	xssmgr_wanted_modules=()
@@ -703,6 +709,8 @@ function xssmgr_daemon_shutdown() {
 
 	# Delete PID file. We are exiting.
 	rm -f "$xssmgr_pid_file"
+
+	xssmgr_logv 'Shutdown complete, exiting.'
 }
 
 # Daemon main event loop.
@@ -723,7 +731,7 @@ function xssmgr_daemon_loop() {
 	do
 		local -a xssmgr_command
 		read -r -a xssmgr_command < "$XSSMGR_FIFO"
-		xssmgr_logv 'Got command: %q' "${xssmgr_command[0]}"
+		xssmgr_logv 'Got command:%s' "$(printf -- ' %q' "${xssmgr_command[@]}")"
 		xssmgr_daemon_command "${xssmgr_command[@]}"
 	done
 }
