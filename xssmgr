@@ -141,7 +141,7 @@ function xssmgr_core_selector() {
 	do
 		local timeout=${line%% *}
 		local module=${line#* }
-		if (( timeout * 1000 >= xssmgr_idle_time ))
+		if (( xssmgr_idle_time >= timeout * 1000 ))
 		then
 			xssmgr_wanted_modules+=("$module")
 		fi
@@ -374,6 +374,8 @@ xssmgr_locked=0
 function xssmgr_lock_selector() {
 	if (( xssmgr_locked ))
 	then
+		# Ensure lock module isn't stopped upon locking
+		xssmgr_wanted_modules+=(lock)
 		xssmgr_wanted_modules+=("${xssmgr_on_lock_modules[@]}")
 	fi
 }
@@ -560,10 +562,10 @@ function xssmgr_start_stop_modules() {
 		module=${xssmgr_running_modules[$i]}
 		if [[ " ${xssmgr_wanted_modules[*]} " != *" $module "* ]]
 		then
-			xssmgr_running_modules=("${xssmgr_running_modules:0:$i}" "${xssmgr_running_modules:$((i+1))}")
-			xssmgr_logv 'Starting module: %q' "$module"
-			xssmgr_module_command "$module" start
-			xssmgr_logv 'Started module: %q' "$module"
+			xssmgr_running_modules=("${xssmgr_running_modules[@]:0:$i}" "${xssmgr_running_modules[@]:$((i+1))}")
+			xssmgr_logv 'Stopping module: %q' "$module"
+			xssmgr_module_command "$module" stop
+			xssmgr_logv 'Stopped module: %q' "$module"
 			xssmgr_start_stop_modules  # Recurse
 			return
 		fi
@@ -575,9 +577,9 @@ function xssmgr_start_stop_modules() {
 		if [[ " ${xssmgr_running_modules[*]} " != *" $module "* ]]
 		then
 			xssmgr_running_modules+=("$module")
-			xssmgr_logv 'Stopping module: %q' "$module"
-			xssmgr_module_command "$module" stop
-			xssmgr_logv 'Stopped module: %q' "$module"
+			xssmgr_logv 'Starting module: %q' "$module"
+			xssmgr_module_command "$module" start
+			xssmgr_logv 'Started module: %q' "$module"
 			xssmgr_start_stop_modules  # Recurse
 			return
 		fi

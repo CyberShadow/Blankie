@@ -73,7 +73,7 @@ function xssmgr_mod_i3lock() {
 				xssmgr_logv 'mod_i3lock: Killing i3lock (PID %d)...' "$xssmgr_i3lock_inner_pid"
 				xssmgr_i3lock_cat_pid=  # Ignore the exit notification
 				kill "$xssmgr_i3lock_inner_pid"
-				while kill -0 "$xssmgr_i3lock_inner_pid"
+				while kill -0 "$xssmgr_i3lock_inner_pid" 2>/dev/null
 				do
 					xssmgr_logv 'mod_i3lock: Waiting...'
 					sleep 0.1
