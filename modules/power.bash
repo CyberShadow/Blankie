@@ -11,7 +11,7 @@ function xssmgr_mod_power() {
 			if (( xssmgr_idle_time == xssmgr_max_time ))
 			then
 				# The system is already executing a power action.
-				return
+				return 0
 			fi
 			systemctl "$xssmgr_power_action"
 			;;

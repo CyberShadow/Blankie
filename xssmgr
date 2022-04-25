@@ -118,7 +118,7 @@ function xssmgr_load_config() {
 			xssmgr_logv 'Loading configuration from %q.' "$xssmgr_config_file"
 			# shellcheck source=/dev/null
 			. "$xssmgr_config_file"
-			return
+			return 0
 		fi
 	done
 
@@ -525,7 +525,7 @@ function xssmgr_load_module() {
 			xssmgr_logv 'Loading module %q from %q' "$xssmgr_module" "$xssmgr_module_file"
 			# shellcheck source=/dev/null
 			. "$xssmgr_module_file"
-			return
+			return 0
 		fi
 	done
 
@@ -570,7 +570,7 @@ function xssmgr_start_stop_modules() {
 			xssmgr_module_command "$xssmgr_module" stop
 			xssmgr_logv 'Stopped module: %q' "$xssmgr_module"
 			xssmgr_start_stop_modules  # Recurse
-			return
+			return 0
 		fi
 	done
 
@@ -584,7 +584,7 @@ function xssmgr_start_stop_modules() {
 			xssmgr_module_command "$xssmgr_module" start
 			xssmgr_logv 'Started module: %q' "$xssmgr_module"
 			xssmgr_start_stop_modules  # Recurse
-			return
+			return 0
 		fi
 	done
 
