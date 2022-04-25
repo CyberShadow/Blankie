@@ -539,7 +539,7 @@ function xssmgr_module_command() {
 	local xssmgr_module=$1
 	local xssmgr_arguments=("${@:2}")
 
-	local xssmgr_module_func=xssmgr_mod_"$module"
+	local xssmgr_module_func=xssmgr_mod_"$xssmgr_module"
 	if ! declare -F "$xssmgr_module_func" > /dev/null
 	then
 		xssmgr_logv 'Auto-loading module %q' "$xssmgr_module"
@@ -559,30 +559,30 @@ function xssmgr_start_stop_modules() {
 
 	# 1. Stop modules which we no longer want to be running.
 	# Do this in reverse order of starting them.
-	local i module
+	local i xssmgr_module
 	for (( i=${#xssmgr_running_modules[@]} - 1; i >= 0; i-- ))
 	do
-		module=${xssmgr_running_modules[$i]}
-		if [[ " ${xssmgr_wanted_modules[*]} " != *" $module "* ]]
+		xssmgr_module=${xssmgr_running_modules[$i]}
+		if [[ " ${xssmgr_wanted_modules[*]} " != *" $xssmgr_module "* ]]
 		then
 			xssmgr_running_modules=("${xssmgr_running_modules[@]:0:$i}" "${xssmgr_running_modules[@]:$((i+1))}")
-			xssmgr_logv 'Stopping module: %q' "$module"
-			xssmgr_module_command "$module" stop
-			xssmgr_logv 'Stopped module: %q' "$module"
+			xssmgr_logv 'Stopping module: %q' "$xssmgr_module"
+			xssmgr_module_command "$xssmgr_module" stop
+			xssmgr_logv 'Stopped module: %q' "$xssmgr_module"
 			xssmgr_start_stop_modules  # Recurse
 			return
 		fi
 	done
 
 	# 2. Start modules which we now want to be running.
-	for module in "${xssmgr_wanted_modules[@]}"
+	for xssmgr_module in "${xssmgr_wanted_modules[@]}"
 	do
-		if [[ " ${xssmgr_running_modules[*]} " != *" $module "* ]]
+		if [[ " ${xssmgr_running_modules[*]} " != *" $xssmgr_module "* ]]
 		then
-			xssmgr_running_modules+=("$module")
-			xssmgr_logv 'Starting module: %q' "$module"
-			xssmgr_module_command "$module" start
-			xssmgr_logv 'Started module: %q' "$module"
+			xssmgr_running_modules+=("$xssmgr_module")
+			xssmgr_logv 'Starting module: %q' "$xssmgr_module"
+			xssmgr_module_command "$xssmgr_module" start
+			xssmgr_logv 'Started module: %q' "$xssmgr_module"
 			xssmgr_start_stop_modules  # Recurse
 			return
 		fi
