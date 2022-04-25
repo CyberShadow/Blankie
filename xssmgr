@@ -95,7 +95,7 @@ function xssmgr_on_idle() { xssmgr_on_idle_modules+=("$1 $2") ; }
 # (Re-)Load the configuration file.
 function xssmgr_load_config() {
 	local -a xssmgr_config_dirs
-	IFS=: read -ra xssmgr_config_dirs <<< "${XDG_CONFIG_DIRS:/etc}"
+	IFS=: read -ra xssmgr_config_dirs <<< "${XDG_CONFIG_DIRS:-/etc}"
 	xssmgr_config_dirs=("${XDG_CONFIG_HOME:-$HOME/.config}" "${xssmgr_config_dirs[@]}")
 	local -a xssmgr_config_files=("${xssmgr_config_dirs[@]/%/\/xssmgr\/config.bash}")
 
@@ -134,7 +134,7 @@ xssmgr_load_config
 # Core functionality: run on_start and on_idle modules
 
 function xssmgr_core_selector() {
-	xssmgr_wanted_modules+=("${xssmgr_on_start_modules[@]}")v
+	xssmgr_wanted_modules+=("${xssmgr_on_start_modules[@]}")
 
 	local line
 	for line in "${xssmgr_on_idle_modules[@]}"
@@ -603,7 +603,7 @@ function xssmgr_update_modules() {
 	done |
 		while read -r key
 		do
-			${!xssmgr_module_selectors[$key]}
+			${xssmgr_module_selectors[$key]}
 		done
 
 	# 2. Start/stop modules accordingly.
