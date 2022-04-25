@@ -415,6 +415,7 @@ xssmgr_unlock_notification_fds=()
 
 function xssmgr_unlock() {
 	xssmgr_locked=0
+	xssmgr_idle_time=0  # Ensure we don't try to immediately relock / go to sleep
 
 	# Notify of unlocks.
 	local locker_reply_fd
