@@ -65,6 +65,9 @@ xssmgr_idle_time=0
 # Constant - dummy idle time used for when the system is about to go to sleep
 xssmgr_max_time=$((2**31-1))
 
+# Daemon's PID file.
+xssmgr_pid_file="$XSSMGR_RUN_DIR"/daemon.pid
+
 # -----------------------------------------------------------------------------
 # Utility functions
 
@@ -689,6 +692,9 @@ function xssmgr_daemon_shutdown() {
 
 	# Delete FIFO. We are no longer accepting commands.
 	rm "$XSSMGR_FIFO"
+
+	# Delete PID file. We are exiting.
+	rm "$xssmgr_pid_file"
 }
 
 # Daemon main event loop.
@@ -698,6 +704,9 @@ function xssmgr_daemon_loop() {
 
 	# Reload the configuration when receiving a SIGHUP.
 	trap xssmgr_reload SIGHUP
+
+	# Create PID file.
+	printf %d $BASHPID > "$xssmgr_pid_file"
 
 	while true
 	do
@@ -781,8 +790,19 @@ function main() {
 			xssmgr_daemon
 			;;
 		stop)
+			if [[ ! -f "$xssmgr_pid_file" ]]
+			then
+				xssmgr_log 'PID file %q does not exist - daemon not running?' "$xssmgr_pid_file"
+				exit 2
+			fi
+
+			local daemon_pid
+			daemon_pid=$(cat "$xssmgr_pid_file")
 			xssmgr_notify "$@"
-			# TODO wait until stopped (need PID file)
+			while kill -0 "$daemon_pid" 2>/dev/null
+			do
+				sleep 0.1
+			done
 			;;
 		status)
 			xssmgr_query "$@"
