@@ -755,10 +755,10 @@ function xssmgr_daemon() {
 			xssmgr_log 'An xssmgr instance seems to already be running on %q!' "$DISPLAY"
 			exit 1
 		fi
-
-		# Remove stale FIFO
-		rm -v "$XSSMGR_FIFO"
 	fi
+
+	# Remove stale FIFO
+	rm -vf "$XSSMGR_FIFO"
 
 	# Ensure a clean shut-down in any eventuality.
 	trap xssmgr_daemon_shutdown EXIT
@@ -796,16 +796,17 @@ function xssmgr_daemon() {
 
 # Send a line to the daemon event loop
 function xssmgr_notify() {
-	if [[ ! -p "$XSSMGR_FIFO" ]]
-	then
-		xssmgr_log '%q does not exist (or is not a fifo) - daemon not running?' "$XSSMGR_FIFO"
-		exit 1
-	fi
-
 	local message
 	message=$(printf -- '%s ' "$@")$'\n'
 	# Send the message in one write.
 	printf -- '%s' "$message" > "$XSSMGR_FIFO"
+
+	# We do this check after writing to avoid a TOCTOU.
+	if [[ ! -p "$XSSMGR_FIFO" ]]
+	then
+		xssmgr_log '%q is not a FIFO - daemon not running?' "$XSSMGR_FIFO"
+		exit 1
+	fi
 }
 
 # Send a line to the daemon, and wait for a reply
