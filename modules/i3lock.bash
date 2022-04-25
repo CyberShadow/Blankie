@@ -83,11 +83,11 @@ function xssmgr_mod_i3lock() {
 		_exit)
 			if [[ -z "$xssmgr_i3lock_cat_pid" ]]
 			then
-				xssmgr_logv 'mod_i3lock: Ignoring stale i3lock exit notification (not expecting one at this time, got PID %D).' \
+				xssmgr_logv 'mod_i3lock: Ignoring stale i3lock exit notification (not expecting one at this time, got PID %s).' \
 							"$2"
 			elif [[ "$2" != "$xssmgr_i3lock_cat_pid" ]]
 			then
-				xssmgr_logv 'mod_i3lock: Ignoring stale i3lock exit notification (wanted PID %d, got PID %D).' \
+				xssmgr_logv 'mod_i3lock: Ignoring stale i3lock exit notification (wanted PID %d, got PID %s).' \
 							"$xssmgr_i3lock_cat_pid" "$2"
 			else
 				xssmgr_log 'mod_i3lock: i3lock exited, unlocking.'
