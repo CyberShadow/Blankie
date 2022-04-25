@@ -606,6 +606,7 @@ function xssmgr_update_modules() {
 	do
 		printf '%s\n' "$key"
 	done |
+		sort |
 		while read -r key
 		do
 			${xssmgr_module_selectors[$key]}
