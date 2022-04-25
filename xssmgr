@@ -785,10 +785,7 @@ function xssmgr_notify() {
 	fi
 
 	local message
-	message=$(
-		printf -- '%s ' "$@"
-		printf -- '\n'
-	)
+	message=$(printf -- '%s ' "$@")$'\n'
 	# Send the message in one write.
 	printf -- '%s' "$message" > "$XSSMGR_FIFO"
 }
