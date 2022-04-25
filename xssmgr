@@ -1,0 +1,804 @@
+#!/bin/bash
+set -eEuo pipefail
+shopt -s lastpipe
+
+# X ScreenSaver manager
+# Receives events and manages X screen saver settings, power,
+# and the screen locker.
+
+# -----------------------------------------------------------------------------
+# Usage
+
+if [[ $# -eq 0 ]]
+then
+	cat <<'EOF'
+Usage: xssmgr COMMAND
+
+Commands:
+  start        Start the xssmgr daemon.
+  stop         Stop the xssmgr daemon.
+  status       Print the current status.
+  lock         Lock the X session now.
+  unlock       Unlock the X session now.
+EOF
+	exit 2
+fi
+
+# -----------------------------------------------------------------------------
+# External globals - made available to the configuration and modules
+
+# Path to the xssmgr script.
+export XSSMGR="$0"
+
+# This session's runtime directory.  Modules may put state here.
+export XSSMGR_RUN_DIR="${XDG_RUNTIME_DIR:-/tmp/$UID}"/xssmgr-"$DISPLAY"
+
+# Daemon's event funnel.
+export XSSMGR_FIFO=$XSSMGR_RUN_DIR/daemon.fifo
+
+# -----------------------------------------------------------------------------
+# Internal globals
+
+# Module search path.  Populated in xssmgr_load_config.
+xssmgr_module_dirs=()
+
+# Currently running modules.
+xssmgr_running_modules=()
+
+# Modules registered in the configuration.
+declare -a xssmgr_on_start_modules xssmgr_on_lock_modules xssmgr_on_idle_modules
+
+# Functions to call to build the list of modules which should be
+# running right now.
+# Functions are called in order of this associative array's keys.
+declare -A xssmgr_module_selectors
+
+# Whether we are currently idle (according to xss-lock).
+# Because xss-lock interfaces with X screen-saver inhibitors,
+# this may be 0 even if xprintidle would produce a large number.
+xssmgr_idle=0
+
+# X server idle time (as provided by xprintidle), in milliseconds,
+# or xssmgr_max_time
+xssmgr_idle_time=0
+
+# Constant - dummy idle time used for when the system is about to go to sleep
+xssmgr_max_time=$((2**31-1))
+
+# -----------------------------------------------------------------------------
+# Utility functions
+
+function xssmgr_log() {
+	# shellcheck disable=SC2059
+	printf -- 'xssmgr: '"$1"'\n' "${@:2}" >&2
+}
+
+function xssmgr_logv() {
+	if [[ "${XSSMGR_VERBOSE:-0}" -gt 0 ]]
+	then
+		xssmgr_log "$@"
+	fi
+}
+
+# -----------------------------------------------------------------------------
+# Configuration
+
+# Called from the user's configuration to register an on-start module.
+function xssmgr_on_start() { xssmgr_on_start_modules+=("$1") ; }
+
+# Called from the user's configuration to register an on-lock module.
+function xssmgr_on_lock() { xssmgr_on_lock_modules+=("$1") ; }
+
+# Called from the user's configuration to register an on-idle module.
+function xssmgr_on_idle() { xssmgr_on_idle_modules+=("$1 $2") ; }
+
+# (Re-)Load the configuration file.
+function xssmgr_load_config() {
+	local -a xssmgr_config_dirs
+	IFS=: read -ra xssmgr_config_dirs <<< "${XDG_CONFIG_DIRS:/etc}"
+	xssmgr_config_dirs=("${XDG_CONFIG_HOME:-$HOME/.config}" "${xssmgr_config_dirs[@]}")
+	local -a xssmgr_config_files=("${xssmgr_config_dirs[@]/%/\/xssmgr\/config.bash}")
+
+	xssmgr_module_dirs=("${xssmgr_config_dirs[@]/%/\/xssmgr\/modules}")
+	if [[ -e "$(dirname "$0")"/.git ]]
+	then
+		# Running from a source checkout
+		xssmgr_module_dirs+=("$(dirname "$0")"/modules)
+	else
+		xssmgr_module_dirs+=(/usr/lib/xssmgr/modules)
+	fi
+
+	for xssmgr_config_file in "${xssmgr_config_files[@]}"
+	do
+		if [[ -f "$xssmgr_config_file" ]]
+		then
+			xssmgr_logv 'Loading configuration from %q.' "$xssmgr_config_file"
+			# shellcheck source=/dev/null
+			. "$xssmgr_config_file"
+			return
+		fi
+	done
+
+	xssmgr_log 'WARNING: No configuration file found.'
+	xssmgr_log 'Please check installation or create %q.' "${xssmgr_config_files[0]}"
+}
+
+# -----------------------------------------------------------------------------
+# Initialization
+
+mkdir -p "$XSSMGR_RUN_DIR"
+
+xssmgr_load_config
+
+# -----------------------------------------------------------------------------
+# Core functionality: run on_start and on_idle modules
+
+function xssmgr_core_selector() {
+	xssmgr_wanted_modules+=("${xssmgr_on_start_modules[@]}")v
+
+	local line
+	for line in "${xssmgr_on_idle_modules[@]}"
+	do
+		local timeout=${line%% *}
+		local module=${line#* }
+		if (( timeout * 1000 >= xssmgr_idle_time ))
+		then
+			xssmgr_wanted_modules+=("$module")
+		fi
+	done
+}
+xssmgr_module_selectors[10-core]=xssmgr_core_selector
+
+# -----------------------------------------------------------------------------
+# Built-in on_start module: xset
+# Manages the X server's XScreenSaver extension settings.  Used to
+# configure when xss-lock receives notifications about the system
+# becoming idle.
+
+function xssmgr_mod_xset() {
+	case "$1" in
+		start)
+			# We configure the X screen saver to "activate" at the
+			# requested idle time of the first idle hook, with a cycle
+			# duration of the time between the first and last idle
+			# hook.  The last idle hook should be a terminal state
+			# such as the lock screen or a power action.
+			local min_timeout=1000000000
+			local max_timeout=0
+			local line
+			for line in "${xssmgr_on_idle_modules[@]}"
+			do
+				local timeout=${line%% *}
+				if (( timeout <= 0 ))
+				then
+					xssmgr_log 'mod_xset: Invalid idle time: %d, ignoring' "$timeout"
+					continue
+				fi
+				min_timeout=$(( min_timeout < timeout ? min_timeout : timeout ))
+				max_timeout=$(( max_timeout > timeout ? max_timeout : timeout ))
+			done
+			xssmgr_logv 'mod_xset: Configuring X screensaver for idle hooks in the %d .. %d range.' "$min_timeout" "$max_timeout"
+			if (( max_timeout > 0 ))
+			then
+				if (( min_timeout < max_timeout ))
+				then
+					xset s $min_timeout $((max_timeout - min_timeout))
+				else
+					xset s $min_timeout
+				fi
+			else
+				xset s off
+			fi
+			;;
+		stop)
+			# Disable X screensaver.
+			xset s off
+			;;
+	esac
+}
+
+# -----------------------------------------------------------------------------
+# Built-in on_start module: xsslock
+# Manages an xss-lock instance, which receives events from the X
+# server and login manager.  Used to know when the system becomes
+# idle, or the login manager requested a lock (e.g. due to the system
+# suspending / hibernating).
+
+# xss-lock PID
+xssmgr_xsslock_pid=
+
+function xssmgr_mod_xsslock() {
+	case "$1" in
+		start)
+			# Start xss-lock
+			if [[ -z "$xssmgr_xsslock_pid" ]]
+			then
+				type xss-lock > /dev/null  # Ensure it's installed
+				xss-lock -n "$(printf '%q ' "$0" module xsslock _notifier)" \
+						 --transfer-sleep-lock \
+						 -- "$0" module xsslock _locker &
+				xssmgr_xsslock_pid=$!
+				xssmgr_logv 'mod_xsslock: Started xss-lock (PID %d).' "$xssmgr_xsslock_pid"
+			fi
+			;;
+		stop)
+			# Stop xss-lock
+			if [[ -n "$xssmgr_xsslock_pid" ]]
+			then
+				xssmgr_logv 'mod_xsslock: Killing xss-lock (PID %d)...' "$xssmgr_xsslock_pid"
+				kill "$xssmgr_xsslock_pid" || true
+				wait "$xssmgr_xsslock_pid" || true
+				xssmgr_xsslock_pid=
+				xssmgr_logv 'mod_xsslock: Done.'
+			fi
+			;;
+
+		# xss-lock notifier implementation.
+		# Runs in a separate process spawned by xss-lock,
+		# and not the xssmgr main event loop.
+		# Our goals:
+		# - Tell xssmgr daemon to start firing idle hooks.
+		# - Wait until we are killed.
+		# - When we are killed (by xss-lock), tell xssmgr daemon
+		#   to stop firing idle hooks.
+		_notifier)
+			xssmgr_logv 'mod_xsslock: xss-lock notifier starting.'
+			xssmgr_notify module xsslock _notifier_start
+			sleep infinity &
+			xssmgr_xsslock_sleep_pid=$!
+			trap 'xssmgr_mod_xsslock _notifier_exit' EXIT
+			wait
+			;;
+		_notifier_exit)
+			# _notifier's EXIT trap.
+			xssmgr_logv 'mod_xsslock: xss-lock notifier exiting.'
+			kill $xssmgr_xsslock_sleep_pid
+			xssmgr_notify module xsslock _notifier_stop
+			;;
+
+		# These run in the main xssmgr event loop.
+		_notifier_start)
+			xssmgr_idle=1
+			xssmgr_idle_time=$(xprintidle)
+			xssmgr_update_modules
+			;;
+		_notifier_stop)
+			xssmgr_idle=0
+			xssmgr_idle_time=$(xprintidle)
+			xssmgr_update_modules
+			;;
+
+		# xss-lock locker implementation.
+		# Runs in a separate process spawned by xss-lock,
+		# and not the xssmgr main event loop.
+		# Our goals:
+		# - Tell xssmgr daemon to start the lock screen and firing
+		#   idle hooks.
+		# - When xssmgr finishes setting up the lock screen, tell
+		#   this to xss-lock via $XSS_SLEEP_LOCK_FD.
+		# - Wait until we are killed or xssmgr tells us that the
+		#   lock screen exited (presumably due to the user
+		#   unlocking the PC).
+		# - If we are killed (by xss-lock), tell xssmgr daemon
+		#   to stop the lock screen.
+		# - Otherwise, just exit (thus notifying xss-lock that the
+		#   lock screen exited).
+		_locker)
+			# Communicate with the xssmgr daemon via this FIFO.
+			xssmgr_logv 'mod_xsslock: xss-lock locker starting.'
+
+			xssmgr_xsslock_fifo=$XSSMGR_RUN_DIR/locker.$$.fifo
+			mkfifo -m 600 "$xssmgr_xsslock_fifo"
+
+			xssmgr_notify module xsslock _locker_start "$xssmgr_xsslock_fifo"
+			trap 'xssmgr_mod_xsslock _locker_exit' EXIT
+			exec {locker_reply_fd}< "$xssmgr_xsslock_fifo"
+
+			# Wait until the daemon tells us that it successfully locked the screen.
+			local reply=
+			if ! IFS= read -r reply <&$locker_reply_fd || [[ "$reply" != 'OK' ]]
+			then
+				xssmgr_log 'mod_xsslock: xssmgr daemon failed to lock session (got reply %q).' "$reply"
+				exit 1
+			fi
+
+			# Tell this to xss-lock (if it wants to know).
+			if [[ -v XSS_SLEEP_LOCK_FD ]]
+			then
+				xssmgr_logv 'mod_xsslock: Releasing xss-lock sleep lock.'
+				exec {XSS_SLEEP_LOCK_FD}<&-
+				unset XSS_SLEEP_LOCK_FD
+			fi
+
+			# Wait until we are killed or the lock screen exits.
+			reply=
+			if ! IFS= read -r reply <&$locker_reply_fd || [[ "$reply" != 'Unlocked' ]]
+			then
+				xssmgr_log 'mod_xsslock: xssmgr exited without unlocking session (got reply %q).' "$reply"
+				exit 1
+			fi
+
+			# All OK - lock screen exited
+			exit 0
+			;;
+		_locker_exit)
+			# _locker's EXIT trap.
+			xssmgr_logv 'mod_xsslock: xss-lock locker exiting.'
+			rm -f "$xssmgr_xsslock_fifo"
+			xssmgr_notify module xsslock _locker_stop
+			;;
+
+		# These run in the main xssmgr event loop.
+		_locker_start)
+			xssmgr_idle=1
+
+			# Open the result FIFO.
+			# Do this right away to avoid a stall on the reading end
+			# in case of a failure.
+			local locker_reply_fd
+			exec {locker_reply_fd}> "$2"
+
+			# Update modules. This will start the locker.
+			xssmgr_idle_time=$xssmgr_max_time
+			xssmgr_update_modules
+
+			# Communicate our success.
+			printf 'OK\n' >&$locker_reply_fd
+
+			if (( xssmgr_locked ))
+			then
+				# Save the FIFO FD for unlock notifications.
+				xssmgr_unlock_notification_fds+=("$locker_reply_fd")
+			else
+				# xssmgr_locked may be 0 if the user did not configure a lock action.
+				xssmgr_logv 'mod_xsslock: Lock screen not activated, sending vacuous unlock.'
+				printf 'Unlocked\n' >&$locker_reply_fd
+				exec {locker_reply_fd}>&-
+			fi
+			;;
+		_locker_stop)
+			xssmgr_idle=0
+			xssmgr_update_modules
+			;;
+	esac
+}
+
+# -----------------------------------------------------------------------------
+# Built-in special module: lock
+# Activates on_lock modules.
+
+# Lock screen active right now?
+xssmgr_locked=0
+
+# React to locking/unlocking by starting/stopping on_lock modules.
+function xssmgr_lock_selector() {
+	if (( xssmgr_locked ))
+	then
+		xssmgr_wanted_modules+=("${xssmgr_on_lock_modules[@]}")
+	fi
+}
+xssmgr_module_selectors[50-lock]=xssmgr_lock_selector
+
+# Additionally define a lock module, which can be added to an on_idle
+# hook to lock the screen when idle.
+function xssmgr_mod_lock() {
+	case "$1" in
+		start)
+			xssmgr_logv 'mod_lock: Locking (because the lock module is being enabled).'
+			xssmgr_lock
+			;;
+		stop)
+			xssmgr_logv 'mod_lock: Unlocking (because the lock module is being disabled).'
+			xssmgr_unlock
+			;;
+	esac
+}
+
+# Note: the lock state can be affected by multiple sources - not just
+# the lock module, but also the explicit lock/unlock actions.  This
+# should work "as expected", so the lock module only changes the lock
+# state on edge (its own start and stop), as opposed to enforcing it
+# for the entire duration it's running.
+
+function xssmgr_lock() {
+	xssmgr_locked=1
+	xssmgr_reconfigure
+}
+
+# Pipes to processes waiting for a notification for when the lock screen exits.
+xssmgr_unlock_notification_fds=()
+
+function xssmgr_unlock() {
+	xssmgr_locked=0
+
+	# Notify of unlocks.
+	local locker_reply_fd
+	for locker_reply_fd in "${xssmgr_unlock_notification_fds[@]}"
+	do
+		printf 'Unlocked\n' >&"$locker_reply_fd"
+		exec {locker_reply_fd}>&-
+	done
+	xssmgr_unlock_notification_fds=()
+
+	xssmgr_reconfigure
+}
+
+# -----------------------------------------------------------------------------
+# Built-in special module: timer
+# When active, sleeps until the next scheduled on_idle hook, and prods
+# the main event loop to ensure on_idle hooks are activated
+# accordingly.
+# By default, activated and deactivated by the xsslock module, but
+# could work as an on_start module instead of xsslock.
+
+# PID of sleeping instance, which waits until the next event
+xssmgr_timer_pid=
+
+function xssmgr_mod_timer() {
+	case "$1" in
+		start)
+			xssmgr_timer_schedule
+			;;
+		stop)
+			xssmgr_timer_cancel
+			;;
+		_wait_done)
+			xssmgr_logv 'mod_timer: Timer fired.'
+			xssmgr_timer_pid=  # It exited cleanly, no need to kill it.
+			xssmgr_idle_time=$(xprintidle)
+			xssmgr_update_modules
+
+			xssmgr_timer_schedule
+			;;
+	esac
+}
+
+# React to xss-lock telling us the system became or stopped being idle.
+function xssmgr_timer_selector() {
+	if (( xssmgr_idle ))
+	then
+		xssmgr_wanted_modules+=(timer)
+	fi
+}
+xssmgr_module_selectors[50-timer]=xssmgr_timer_selector
+
+function xssmgr_timer_cancel() {
+	if [[ -n "$xssmgr_timer_pid" ]]
+	then
+		xssmgr_logv 'mod_timer: Canceling old timer wait task (PID %d).' "$xssmgr_timer_pid"
+		kill "$xssmgr_timer_pid"
+		xssmgr_timer_pid=
+	fi
+}
+
+function xssmgr_timer_schedule() {
+	xssmgr_timer_cancel
+
+	local line next=$xssmgr_max_time
+	for line in "${xssmgr_on_idle_modules[@]}"
+	do
+		local timeout=${line%% *}
+		local timeout_ms=$((timeout * 1000))
+		if (( timeout_ms > xssmgr_idle_time && timeout_ms < next))
+		then
+			next=$timeout_ms
+		fi
+	done
+
+	if (( next < xssmgr_max_time ))
+	then
+		local to_sleep=$((next - xssmgr_idle_time + 1))
+		xssmgr_timer_wait $to_sleep &
+		xssmgr_logv 'mod_timer: Started new timer wait task (PID %d) for %d milliseconds.' \
+					"$xssmgr_timer_pid" "$to_sleep"
+		xssmgr_timer_pid=$!
+	fi
+}
+
+function xssmgr_timer_wait() {
+	local ms=$1
+	ms=$(printf '%04d' "$ms")
+	local s=${ms:0:-3}.${ms: -3}
+
+	sleep "$s"
+
+	xssmgr_notify module timer _wait_done
+}
+
+# -----------------------------------------------------------------------------
+# Daemon implementation
+
+function xssmgr_load_module() {
+	local xssmgr_module=$1
+
+	local xssmgr_module_dir
+	for xssmgr_module_dir in "${xssmgr_module_dirs[@]}"
+	do
+		local xssmgr_module_file="$xssmgr_module_dir"/"$xssmgr_module".bash
+		if [[ -f "$xssmgr_module_file" ]]
+		then
+			xssmgr_logv 'Loading module %q from %q' "$xssmgr_module" "$xssmgr_module_file"
+			# shellcheck source=/dev/null
+			. "$xssmgr_module_file"
+			return
+		fi
+	done
+
+	xssmgr_log 'Module %q not found (looked in: %s)' \
+			   "$xssmgr_module" \
+			   "${xssmgr_module_dirs[*]}"
+	exit 1
+}
+
+function xssmgr_module_command() {
+	local xssmgr_module=$1
+	local xssmgr_arguments=("${@:2}")
+
+	local xssmgr_module_func=xssmgr_mod_"$module"
+	if ! declare -F "$xssmgr_module_func" > /dev/null
+	then
+		xssmgr_logv 'Auto-loading module %q' "$xssmgr_module"
+		xssmgr_load_module "$xssmgr_module"
+	fi
+
+	"$xssmgr_module_func" "${xssmgr_arguments[@]}"
+}
+
+# Start or stop modules, synchronizing xssmgr_running_modules
+# against xssmgr_wanted_modules.
+function xssmgr_start_stop_modules() {
+	# Because modules may themselves start or stop other modules when
+	# they are started or stopped, support recursion by performing one
+	# operation at a time, and recursing to restart the loop until
+	# there is no work left to be done.
+
+	# 1. Stop modules which we no longer want to be running.
+	# Do this in reverse order of starting them.
+	local i module
+	for (( i=${#xssmgr_running_modules[@]} - 1; i >= 0; i-- ))
+	do
+		module=${xssmgr_running_modules[$i]}
+		if [[ " ${xssmgr_wanted_modules[*]} " != *" $module "* ]]
+		then
+			xssmgr_running_modules=("${xssmgr_running_modules:0:$i}" "${xssmgr_running_modules:$((i+1))}")
+			xssmgr_logv 'Starting module: %q' "$module"
+			xssmgr_module_command "$module" start
+			xssmgr_logv 'Started module: %q' "$module"
+			xssmgr_start_stop_modules  # Recurse
+			return
+		fi
+	done
+
+	# 2. Start modules which we now want to be running.
+	for module in "${xssmgr_wanted_modules[@]}"
+	do
+		if [[ " ${xssmgr_running_modules[*]} " != *" $module "* ]]
+		then
+			xssmgr_running_modules+=("$module")
+			xssmgr_logv 'Stopping module: %q' "$module"
+			xssmgr_module_command "$module" stop
+			xssmgr_logv 'Stopped module: %q' "$module"
+			xssmgr_start_stop_modules  # Recurse
+			return
+		fi
+	done
+
+	# If we reached this point, there is no more work to do.
+}
+
+# Start or stop modules according to the current circumstances.
+function xssmgr_update_modules() {
+	# 1. Build the list of wanted modules.
+	# Do this by calling the functions registered in xssmgr_module_selectors.
+
+	xssmgr_logv 'Updating list of modules to run with circumstances: is locked: %d, is idle: %d, idle time: %d' \
+				"$xssmgr_locked" "$xssmgr_idle" "$xssmgr_idle_time"
+
+	xssmgr_wanted_modules=()
+
+	local key
+	for key in "${!xssmgr_module_selectors[@]}"
+	do
+		printf '%s\n' "$key"
+	done |
+		while read -r key
+		do
+			${!xssmgr_module_selectors[$key]}
+		done
+
+	# 2. Start/stop modules accordingly.
+	xssmgr_start_stop_modules
+}
+
+# Re-evaluate the configuration and update our state to match.
+function xssmgr_reconfigure() {
+	xssmgr_logv 'Reconfiguring.'
+
+	# Reset settings before (re-)loading configuration file.
+	xssmgr_on_start_modules=(xset xsslock)
+	xssmgr_on_lock_modules=()
+	xssmgr_on_idle_modules=()
+
+	# Evaluate the user-defined configuration function.
+	xssmgr_config
+
+	xssmgr_update_modules
+}
+
+# Reload the configuration file and reconfigure.
+function xssmgr_reload() {
+	xssmgr_log 'Got SIGHUP - reloading configuration.'
+
+	xssmgr_load_config
+	xssmgr_reconfigure
+}
+
+# Handle one daemon command.
+function xssmgr_daemon_command() {
+	case "$1" in
+		status)
+			{
+				printf -- 'Currently locked: %d\n' $xssmgr_locked
+				printf -- 'Running modules:\n'
+				printf -- '- %q\n' "${xssmgr_running_modules[@]}"
+				printf -- 'Registered on_start modules:\n'
+				printf -- '- %q\n' "${xssmgr_on_start_modules[@]}"
+				printf -- 'Registered on_idle modules:\n'
+				printf -- '- %q\n' "${xssmgr_on_idle_modules[@]}"
+				printf -- 'Registered on_lock modules:\n'
+				printf -- '- %q\n' "${xssmgr_on_lock_modules[@]}"
+			} > "$2"
+			;;
+		stop)
+			xssmgr_log 'Daemon is exiting.'
+			exit  # Clean-up will be performed by the exit trap.
+			;;
+		module) # Synchronously execute module subcommand, in the daemon process
+			xssmgr_module_command "${@:2}"
+			;;
+		lock)
+			xssmgr_log 'Locking the screen due to user request.'
+			if (( ! xssmgr_locked ))
+			then
+				xssmgr_lock
+				echo 'Locked.' > "$2"
+			else
+				echo 'Already locked.' > "$2"
+			fi
+			;;
+		unlock)
+			xssmgr_log 'Unlocking the screen due to user request.'
+			if (( xssmgr_locked ))
+			then
+				xssmgr_unlock
+				echo 'Unlocked.' > "$2"
+			else
+				echo 'Already unlocked.' > "$2"
+			fi
+			;;
+	esac
+}
+
+# Exit trap.
+function xssmgr_daemon_shutdown() {
+	# Stop all modules.
+	xssmgr_wanted_modules=()
+	xssmgr_start_stop_modules
+
+	# Delete FIFO. We are no longer accepting commands.
+	rm "$XSSMGR_FIFO"
+}
+
+# Daemon main event loop.
+function xssmgr_daemon_loop() {
+	# Re-register trap, as we are in a subshell.
+	trap xssmgr_daemon_shutdown EXIT
+
+	# Reload the configuration when receiving a SIGHUP.
+	trap xssmgr_reload SIGHUP
+
+	while true
+	do
+		read -r -a command < "$XSSMGR_FIFO"
+		xssmgr_logv 'Got command: %q' "${command[0]}"
+		xssmgr_daemon_command "${command[@]}"
+	done
+}
+
+# Daemon entry point.
+function xssmgr_daemon() {
+	# Check if xssmgr is already running.
+	if [[ -p "$XSSMGR_FIFO" ]]
+	then
+		if timeout 0.1 sh -c "$(printf 'true > %q' "$XSSMGR_FIFO")"
+		then
+			xssmgr_log 'An xssmgr instance seems to already be running on %q!' "$DISPLAY"
+			exit 1
+		fi
+
+		# Remove stale FIFO
+		rm -v "$XSSMGR_FIFO"
+	fi
+
+	# Ensure a clean shut-down in any eventuality.
+	trap xssmgr_daemon_shutdown EXIT
+
+	# Create the event funnel FIFO
+	mkfifo -m 600 "$XSSMGR_FIFO"
+
+	# Start on-boot modules.
+	# Do this before forking so that we can communicate if our
+	# start-up was successful.
+	xssmgr_reconfigure
+
+	# Now, fork away the daemon main loop.
+	xssmgr_daemon_loop &
+
+	# Clear our exit trap, as it should now run in the main loop subshell.
+	trap '' EXIT
+
+	xssmgr_log 'Daemon started on %q.' "$DISPLAY"
+}
+
+# -----------------------------------------------------------------------------
+# Daemon communication
+
+# Send a line to the daemon event loop
+function xssmgr_notify() {
+	if [[ ! -p "$XSSMGR_FIFO" ]]
+	then
+		xssmgr_log '%q does not exist (or is not a fifo) - daemon not running?' "$XSSMGR_FIFO"
+		exit 1
+	fi
+
+	local message
+	message=$(
+		printf -- '%s ' "$@"
+		printf -- '\n'
+	)
+	# Send the message in one write.
+	printf -- '%s' "$message" > "$XSSMGR_FIFO"
+}
+
+# Send a line to the daemon, and wait for a reply
+function xssmgr_query() {
+	local qfifo=$XSSMGR_RUN_DIR/query.$$.fifo  # Answer will be sent here
+
+	mkfifo -m 600 "$qfifo"
+	xssmgr_notify "$@" "$qfifo"
+	cat "$qfifo"
+	rm "$qfifo"
+}
+
+# -----------------------------------------------------------------------------
+# Entry point
+
+function main() {
+	case "$1" in
+		start)
+			xssmgr_daemon
+			;;
+		stop)
+			xssmgr_notify "$@"
+			# TODO wait until stopped (need PID file)
+			;;
+		status)
+			xssmgr_query "$@"
+			;;
+		lock)
+			xssmgr_query "$@"
+			;;
+		unlock)
+			xssmgr_query "$@"
+			;;
+		# Internal commands:
+		module) # Synchronously execute module subcommand, outside the daemon process
+			xssmgr_module_command "${@:2}"
+			;;
+		*)
+			xssmgr_log 'Unknown command: %q' "$1"
+			exit 1
+	esac
+}
+
+main "$@"
