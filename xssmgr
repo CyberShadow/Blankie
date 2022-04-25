@@ -696,13 +696,17 @@ function xssmgr_daemon_command() {
 	esac
 }
 
+function xssmgr_shutdown_selector() {
+	xssmgr_wanted_modules=()
+}
+
 # Exit trap.
 function xssmgr_daemon_shutdown() {
 	xssmgr_logv 'Shutting down.'
 
 	# Stop all modules.
-	xssmgr_wanted_modules=()
-	xssmgr_start_stop_modules
+	xssmgr_module_selectors[95-shutdown]=xssmgr_shutdown_selector
+	xssmgr_update_modules
 
 	# Delete FIFO. We are no longer accepting commands.
 	rm "$XSSMGR_FIFO"
