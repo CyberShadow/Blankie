@@ -1,0 +1,107 @@
+#!/usr/bin/env python
+
+# Glue between the X11 Screen Saver Extension and xssmgr.
+# Implements an X screen saver, which merely communicates
+# events received from the X server to standard output.
+
+import os
+import signal
+import sys
+
+from Xlib import display, Xatom
+import Xlib_ext_screensaver as screensaver
+
+verbose = int(os.getenv('XSSMGR_VERBOSE', '0'))
+
+class ScreenSaver:
+    d = None
+    screen = None
+    pixmap = None
+
+    def __init__(self, disp):
+        self.d = disp
+
+    def run(self):
+        try:
+            r = self.d.screensaver_query_version()
+            if verbose:
+                sys.stderr.write(f'{screensaver.extname} version {r.major_version}.{r.minor_version}\n')
+
+            self.screen = self.d.screen()
+
+            error = []
+            def set_attributes_error(e, _req):
+                error.append(e)
+                return True
+
+            self.screen.root.screensaver_set_attributes(
+                -1, -1, 1, 1, 0,
+                onerror=set_attributes_error
+            )
+            self.d.sync()
+            if error:
+                raise Exception(
+                    'xssmgr/xss: Failed to set screensaver attributes; '
+                    'is another one running?'
+                    + ''.join(f'\n{e}' for e in error)
+                )
+
+            self.screen.root.screensaver_select_input(
+                screensaver.NotifyMask | screensaver.CycleMask
+            )
+
+            self.pixmap = self.screen.root.create_pixmap(1, 1, self.screen.root_depth)
+
+            self.screen.root.change_property(
+                property=self.d.get_atom('_MIT_SCREEN_SAVER_ID'),
+                property_type=Xatom.PIXMAP,
+                format=32,
+                data=[self.pixmap.id],
+            )
+            self.d.sync()
+            print('init')  # Communicate successful startup
+
+            while True:
+                e = self.d.next_event()
+
+                if verbose:
+                    sys.stderr.write(f'xssmgr/xss: Got message: {e}\n')
+
+                if e.__class__.__name__ == screensaver.Notify.__name__:
+                    print(
+                        'notify',
+                        ['off', 'on', 'cycle'][e.state],
+                        ['blanked', 'internal', 'external'][e.kind],
+                        ['natural', 'forced'][e.forced],
+                    )
+        finally:
+            self.stop()
+
+    def stop(self):
+        if verbose:
+            sys.stderr.write('xssmgr/xss: Stopping.\n')
+        if self.screen:
+            self.screen.root.screensaver_unset_attributes()
+            self.screen.root.delete_property(self.d.get_atom('_MIT_SCREEN_SAVER_ID'))
+            self.screen = None
+        if self.pixmap:
+            self.pixmap.free()
+            self.pixmap = None
+
+def main():
+    disp = display.Display()
+    screensaver.load(disp)
+
+    ss = ScreenSaver(disp)
+
+    def stop(*_args):
+        sys.stderr.write('xssmgr/xss: Got SIGTERM - exiting. (Ignore errors below.)\n')
+        ss.stop()
+        ss.d.close()
+
+    signal.signal(signal.SIGTERM, stop)
+
+    ss.run()
+
+if __name__ == '__main__':
+    main()
