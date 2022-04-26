@@ -59,7 +59,7 @@ class ScreenSaver:
                 data=[self.pixmap.id],
             )
             self.d.sync()
-            print('init')  # Communicate successful startup
+            print('init', flush=True)  # Communicate successful startup
 
             while True:
                 e = self.d.next_event()
@@ -73,6 +73,7 @@ class ScreenSaver:
                         ['off', 'on', 'cycle'][e.state],
                         ['blanked', 'internal', 'external'][e.kind],
                         ['natural', 'forced'][e.forced],
+                        flush=True
                     )
         finally:
             self.stop()
