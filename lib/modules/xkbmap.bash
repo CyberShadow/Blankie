@@ -3,7 +3,9 @@
 # and restores previous settings when deactivating.
 
 # The keyboard configuration to use when locked.  User configurable.
-xssmgr_xkbmap_args=(-layout us)
+if [[ ! -v xssmgr_xkbmap_args ]] ; then
+	xssmgr_xkbmap_args=(-layout us)
+fi
 
 # The previous keyboard configuration.
 xssmgr_xkbmap_state=()

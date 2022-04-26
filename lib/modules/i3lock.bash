@@ -8,7 +8,9 @@ xssmgr_i3lock_inner_pid=
 xssmgr_i3lock_cat_pid=
 
 # Additional arguments. User configurable.
-xssmgr_i3lock_args=()
+if [[ ! -v xssmgr_i3lock_args ]] ; then
+	xssmgr_i3lock_args=()
+fi
 
 function xssmgr_mod_i3lock() {
 	# Our goals:

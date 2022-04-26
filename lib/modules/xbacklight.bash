@@ -4,13 +4,17 @@
 
 # Additional arguments, used for both querying and setting (such as
 # -ctrl or -perceived). User configurable.
-xssmgr_xbacklight_args=()
+if [[ ! -v xssmgr_xbacklight_args ]] ; then
+	xssmgr_xbacklight_args=()
+fi
 
 # Additional arguments for fading the brightness (such as -time, -fps
 # or -steps). User configurable. Generally should have -time
 # corresponding to the time until the next/final idle event, and
 # -steps or -fps.
-xssmgr_xbacklight_set_args=(-fps 15)
+if [[ ! -v xssmgr_xbacklight_set_args ]] ; then
+	xssmgr_xbacklight_set_args=(-fps 15)
+fi
 
 # PID of any running xbacklight process.
 xssmgr_xbacklight_pid=

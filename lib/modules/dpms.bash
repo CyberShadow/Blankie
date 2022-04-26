@@ -4,7 +4,9 @@
 # The DPMS state to set.  User configurable.
 # Can be one of standby, suspend, or off.
 # For most modern computer screens, the effect will be the same.
-xssmgr_dpms_state=off
+if [[ ! -v xssmgr_dpms_state ]] ; then
+	xssmgr_dpms_state=off
+fi
 
 function xssmgr_mod_dpms() {
 	case "$1" in
