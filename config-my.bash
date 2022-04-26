@@ -112,11 +112,12 @@ function xssmgr_config() {
 	# Don't want to auto-mount any USB sticks while the screen is locked.
 	xssmgr_on_lock udiskie
 
-	# Change the keyboard to US QWERTY before locking the screen.
-	# Avoid frustration due to your password not working when you were
-	# actually typing it in Cyrillic.
-	xssmgr_xkbmap_args=(-layout us)
-	xssmgr_on_lock xkbmap
+	# # Change the keyboard to US QWERTY before locking the screen.
+	# # Avoid frustration due to your password not working when you were
+	# # actually typing it in Cyrillic.
+	# xssmgr_xkbmap_args=(-layout us)
+	# xssmgr_on_lock xkbmap
+	xssmgr_on_lock xkblayout
 
 	# Finally, add the lock screen itself.  It should be the last module
 	# to run, to ensure that other security modules run before the lock
@@ -134,6 +135,21 @@ function xssmgr_mod_udiskie() {
 			;;
 		stop)
 			systemctl --user start cs-x-udiskie@:0.service
+			;;
+	esac
+}
+
+# Custom on_lock xssmgr module: xkblayout
+# I use a custom script which replaces the entire XKB configuration,
+# to avoid some programs still using QWERTY keys in their hotkey bindings.
+
+function xssmgr_mod_xkblayout() {
+	case "$1" in
+		start)
+			~/libexec/xkblayout 1 # US Dvorak
+			;;
+		stop)
+			# I don't care about restoring it.
 			;;
 	esac
 }
