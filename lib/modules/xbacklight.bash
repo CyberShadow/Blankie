@@ -66,7 +66,7 @@ function xssmgr_mod_xbacklight() {
 				xssmgr_logv 'mod_xbacklight: xbacklight exited with status %d.' "$status"
 				xssmgr_xbacklight_pid=
 			else
-				xssmgr_logv 'mod_xbacklight: Ignoring stale exit notification.' "$2"
+				xssmgr_logv 'mod_xbacklight: Ignoring stale exit notification.'
 			fi
 			;;
 	esac
