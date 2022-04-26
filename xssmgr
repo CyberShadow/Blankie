@@ -43,7 +43,7 @@ export XSSMGR_FIFO=$XSSMGR_RUN_DIR/daemon.fifo
 if [[ -e "$(dirname "$0")"/.git ]]
 then
 	# Running from a source checkout
-	xssmgr_lib_dir=$(dirname "$0")
+	xssmgr_lib_dir=$(dirname "$0")/lib
 else
 	xssmgr_lib_dir=/usr/lib/xssmgr
 fi
