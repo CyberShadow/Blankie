@@ -62,8 +62,8 @@ declare -a xssmgr_on_start_modules xssmgr_on_lock_modules xssmgr_on_idle_modules
 # Functions are called in order of this associative array's keys.
 declare -A xssmgr_module_selectors
 
-# Whether we are currently idle (according to xss-lock).
-# Because xss-lock interfaces with X screen-saver inhibitors,
+# Whether we are currently idle (according to X / xss).
+# Because xss is affected by X screen-saver inhibitors,
 # this may be 0 even if xprintidle would produce a large number.
 xssmgr_idle=0
 
@@ -206,169 +206,85 @@ function xssmgr_mod_xset() {
 }
 
 # -----------------------------------------------------------------------------
-# Built-in on_start module: xsslock
-# Manages an xss-lock instance, which receives events from the X
-# server and login manager.  Used to know when the system becomes
-# idle, or the login manager requested a lock (e.g. due to the system
-# suspending / hibernating).
+# Built-in on_start module: xss
+# Manages an instance of a helper program, which receives screen saver
+# events from the X server.  Used to know when the system becomes or
+# stops being idle.
 
-# xss-lock PID
-xssmgr_xsslock_pid=
+# xss PID
+xssmgr_xss_pid=
 
-function xssmgr_mod_xsslock() {
+function xssmgr_mod_xss() {
 	case "$1" in
 		start)
-			# Start xss-lock
-			if [[ -z "$xssmgr_xsslock_pid" ]]
+			# Start xss
+			if [[ -z "$xssmgr_xss_pid" ]]
 			then
-				type xss-lock > /dev/null  # Ensure it's installed
-				xss-lock -n "$(printf '%q ' "$0" module xsslock _notifier)" \
-						 --transfer-sleep-lock \
-						 -- "$0" module xsslock _locker &
-				xssmgr_xsslock_pid=$!
-				xssmgr_logv 'mod_xsslock: Started xss-lock (PID %d).' "$xssmgr_xsslock_pid"
+				local fifo="$XSSMGR_RUN_DIR"/xss.fifo
+				rm -f "$fifo"
+				mkfifo "$fifo"
+
+				"$xssmgr_lib_dir"/xss > "$fifo" &
+				xssmgr_xss_pid=$!
+
+				local fifo_fd
+				exec {fifo_fd}< "$fifo"
+				rm "$fifo"
+
+				local reply=
+				if ! IFS= read -r -u "$fifo_fd" reply || [[ "$reply" != 'init' ]]
+				then
+					xssmgr_logv 'mod_xss: xss initialization failed.'
+					exit 1
+				fi
+
+				# Start event reader task
+				xssmgr_xss_reader "$fifo_fd" &
+				exec {fifo_fd}<&-
+
+				xssmgr_logv 'mod_xss: Started xss (PID %d).' "$xssmgr_xss_pid"
 			fi
 			;;
 		stop)
-			# Stop xss-lock
-			if [[ -n "$xssmgr_xsslock_pid" ]]
+			# Stop xss
+			if [[ -n "$xssmgr_xss_pid" ]]
 			then
-				xssmgr_logv 'mod_xsslock: Killing xss-lock (PID %d)...' "$xssmgr_xsslock_pid"
-				kill "$xssmgr_xsslock_pid" || true
-				wait "$xssmgr_xsslock_pid" || true
-				xssmgr_xsslock_pid=
-				xssmgr_logv 'mod_xsslock: Done.'
+				xssmgr_logv 'mod_xss: Killing xss (PID %d)...' "$xssmgr_xss_pid"
+				kill "$xssmgr_xss_pid" || true
+				wait "$xssmgr_xss_pid" || true
+				xssmgr_xss_pid=
+				xssmgr_logv 'mod_xss: Done.'
 			fi
 			;;
-
-		# xss-lock notifier implementation.
-		# Runs in a separate process spawned by xss-lock,
-		# and not the xssmgr main event loop.
-		# Our goals:
-		# - Tell xssmgr daemon to start firing idle hooks.
-		# - Wait until we are killed.
-		# - When we are killed (by xss-lock), tell xssmgr daemon
-		#   to stop firing idle hooks.
-		_notifier)
-			xssmgr_logv 'mod_xsslock: xss-lock notifier starting.'
-			xssmgr_notify module xsslock _notifier_start
-			sleep infinity &
-			xssmgr_xsslock_sleep_pid=$!
-			trap 'xssmgr_mod_xsslock _notifier_exit' EXIT
-			wait
-			;;
-		_notifier_exit)
-			# _notifier's EXIT trap.
-			xssmgr_logv 'mod_xsslock: xss-lock notifier exiting.'
-			kill $xssmgr_xsslock_sleep_pid
-			xssmgr_notify module xsslock _notifier_stop
-			;;
-
-		# These run in the main xssmgr event loop.
-		_notifier_start)
-			xssmgr_idle=1
-			xssmgr_idle_time=$(xprintidle)
-			xssmgr_update_modules
-			;;
-		_notifier_stop)
-			xssmgr_idle=0
-			xssmgr_idle_time=$(xprintidle)
-			xssmgr_update_modules
-			;;
-
-		# xss-lock locker implementation.
-		# Runs in a separate process spawned by xss-lock,
-		# and not the xssmgr main event loop.
-		# Our goals:
-		# - Tell xssmgr daemon to start the lock screen and firing
-		#   idle hooks.
-		# - When xssmgr finishes setting up the lock screen, tell
-		#   this to xss-lock via $XSS_SLEEP_LOCK_FD.
-		# - Wait until we are killed or xssmgr tells us that the
-		#   lock screen exited (presumably due to the user
-		#   unlocking the PC).
-		# - If we are killed (by xss-lock), tell xssmgr daemon
-		#   to stop the lock screen.
-		# - Otherwise, just exit (thus notifying xss-lock that the
-		#   lock screen exited).
-		_locker)
-			# Communicate with the xssmgr daemon via this FIFO.
-			xssmgr_logv 'mod_xsslock: xss-lock locker starting.'
-
-			xssmgr_xsslock_fifo=$XSSMGR_RUN_DIR/locker.$$.fifo
-			mkfifo -m 600 "$xssmgr_xsslock_fifo"
-
-			xssmgr_notify module xsslock _locker_start "$xssmgr_xsslock_fifo"
-			trap 'xssmgr_mod_xsslock _locker_exit' EXIT
-			exec {locker_reply_fd}< "$xssmgr_xsslock_fifo"
-
-			# Wait until the daemon tells us that it successfully locked the screen.
-			local reply=
-			if ! IFS= read -r reply <&$locker_reply_fd || [[ "$reply" != 'OK' ]]
-			then
-				xssmgr_log 'mod_xsslock: xssmgr daemon failed to lock session (got reply %q).' "$reply"
-				exit 1
-			fi
-
-			# Tell this to xss-lock (if it wants to know).
-			if [[ -v XSS_SLEEP_LOCK_FD ]]
-			then
-				xssmgr_logv 'mod_xsslock: Releasing xss-lock sleep lock.'
-				exec {XSS_SLEEP_LOCK_FD}<&-
-				unset XSS_SLEEP_LOCK_FD
-			fi
-
-			# Wait until we are killed or the lock screen exits.
-			reply=
-			if ! IFS= read -r reply <&$locker_reply_fd || [[ "$reply" != 'Unlocked' ]]
-			then
-				xssmgr_log 'mod_xsslock: xssmgr exited without unlocking session (got reply %q).' "$reply"
-				exit 1
-			fi
-
-			# All OK - lock screen exited
-			exit 0
-			;;
-		_locker_exit)
-			# _locker's EXIT trap.
-			xssmgr_logv 'mod_xsslock: xss-lock locker exiting.'
-			rm -f "$xssmgr_xsslock_fifo"
-			xssmgr_notify module xsslock _locker_stop
-			;;
-
-		# These run in the main xssmgr event loop.
-		_locker_start)
-			xssmgr_idle=1
-
-			# Open the result FIFO.
-			# Do this right away to avoid a stall on the reading end
-			# in case of a failure.
-			local locker_reply_fd
-			exec {locker_reply_fd}> "$2"
-
-			# Update modules. This will start the locker.
-			xssmgr_idle_time=$xssmgr_max_time
-			xssmgr_update_modules
-
-			# Communicate our success.
-			printf 'OK\n' >&$locker_reply_fd
-
-			if (( xssmgr_locked ))
-			then
-				# Save the FIFO FD for unlock notifications.
-				xssmgr_unlock_notification_fds+=("$locker_reply_fd")
-			else
-				# xssmgr_locked may be 0 if the user did not configure a lock action.
-				xssmgr_logv 'mod_xsslock: Lock screen not activated, sending vacuous unlock.'
-				printf 'Unlocked\n' >&$locker_reply_fd
-				exec {locker_reply_fd}>&-
-			fi
-			;;
-		_locker_stop)
-			xssmgr_idle=0
-			xssmgr_update_modules
-			;;
+		_event)
+			xssmgr_logv 'mod_xss: Got line from xss:%s' "$(printf -- ' %q' "${@:2}")"
+			case "$2" in
+				notify)
+					local state=$3 # kind=$4 forced=$5
+					if [[ "$state" == off ]]
+					then
+						xssmgr_idle=0
+					else
+						xssmgr_idle=1
+					fi
+					xssmgr_idle_time=$(xprintidle)
+					xssmgr_update_modules
+					;;
+				*)
+					xssmgr_log 'mod_xss: Unknown line received from xss:%s' "$(printf -- ' %q' "${@:2}")"
+			esac
 	esac
+}
+
+function xssmgr_xss_reader() {
+	local fd=$1
+
+	local line
+	while read -r -a line -u "$fd"
+	do
+		xssmgr_notify module xss _event "${line[@]}"
+	done
+	xssmgr_logv 'mod_xss: xss exited (EOF).'
 }
 
 # -----------------------------------------------------------------------------
@@ -462,7 +378,7 @@ function xssmgr_mod_timer() {
 	esac
 }
 
-# React to xss-lock telling us the system became or stopped being idle.
+# React to xss telling us the system became or stopped being idle.
 function xssmgr_timer_selector() {
 	if (( xssmgr_idle ))
 	then
@@ -631,7 +547,7 @@ function xssmgr_reconfigure() {
 	xssmgr_logv 'Reconfiguring.'
 
 	# Reset settings before (re-)loading configuration file.
-	xssmgr_on_start_modules=(xset xsslock)
+	xssmgr_on_start_modules=(xset xss)
 	xssmgr_on_lock_modules=()
 	xssmgr_on_idle_modules=()
 
