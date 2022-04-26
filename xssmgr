@@ -466,8 +466,8 @@ function xssmgr_module_command() {
 # Start or stop modules, synchronizing xssmgr_running_modules
 # against xssmgr_wanted_modules.
 function xssmgr_start_stop_modules() {
-	xssmgr_logv 'Running modules: %s' "${xssmgr_running_modules[*]}"
-	xssmgr_logv 'Wanted  modules: %s' "${xssmgr_wanted_modules[*]}"
+	# xssmgr_logv 'Running modules: %s' "${xssmgr_running_modules[*]}"
+	# xssmgr_logv 'Wanted  modules: %s' "${xssmgr_wanted_modules[*]}"
 
 	# Because modules may themselves start or stop other modules when
 	# they are started or stopped, support recursion by performing one
@@ -528,7 +528,7 @@ function xssmgr_update_modules() {
 		while read -r key
 		do
 			local xssmgr_module_selector=${xssmgr_module_selectors[$key]}
-			xssmgr_logv 'Calling module selector: %q' "$xssmgr_module_selector"
+			# xssmgr_logv 'Calling module selector: %q' "$xssmgr_module_selector"
 			"$xssmgr_module_selector"
 		done
 
