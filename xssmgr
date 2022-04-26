@@ -39,6 +39,15 @@ export XSSMGR_FIFO=$XSSMGR_RUN_DIR/daemon.fifo
 # -----------------------------------------------------------------------------
 # Internal globals
 
+# Library directory.
+if [[ -e "$(dirname "$0")"/.git ]]
+then
+	# Running from a source checkout
+	xssmgr_lib_dir=$(dirname "$0")
+else
+	xssmgr_lib_dir=/usr/lib/xssmgr
+fi
+
 # Module search path.  Populated in xssmgr_load_config.
 xssmgr_module_dirs=()
 
@@ -102,14 +111,10 @@ function xssmgr_load_config() {
 	xssmgr_config_dirs=("${XDG_CONFIG_HOME:-$HOME/.config}" "${xssmgr_config_dirs[@]}")
 	local -a xssmgr_config_files=("${xssmgr_config_dirs[@]/%/\/xssmgr\/config.bash}")
 
-	xssmgr_module_dirs=("${xssmgr_config_dirs[@]/%/\/xssmgr\/modules}")
-	if [[ -e "$(dirname "$0")"/.git ]]
-	then
-		# Running from a source checkout
-		xssmgr_module_dirs+=("$(dirname "$0")"/modules)
-	else
-		xssmgr_module_dirs+=(/usr/lib/xssmgr/modules)
-	fi
+	xssmgr_module_dirs=(
+		"${xssmgr_config_dirs[@]/%/\/xssmgr\/modules}"
+		"$xssmgr_lib_dir"/modules
+	)
 
 	for xssmgr_config_file in "${xssmgr_config_files[@]}"
 	do
