@@ -122,6 +122,7 @@ function xssmgr_config() {
 	# Finally, add the lock screen itself.  It should be the last module
 	# to run, to ensure that other security modules run before the lock
 	# screen becomes visible, thus confirming that the machine is secure.
+	xssmgr_i3lock_args=(--show-failed-attempts --image ~/data/images/wallpaper/blurred.png)
 	xssmgr_on_lock i3lock
 }
 
