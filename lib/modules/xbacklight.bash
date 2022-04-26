@@ -44,6 +44,7 @@ function xssmgr_mod_xbacklight() {
 			then
 				xssmgr_logv 'mod_xbacklight: Killing xbacklight (PID %d)...' "$xssmgr_xbacklight_pid"
 				kill "$xssmgr_xbacklight_pid" || true
+				wait "$xssmgr_xbacklight_pid" || true
 				xssmgr_xbacklight_pid=
 				xssmgr_logv 'mod_xbacklight: Done.'
 			fi
