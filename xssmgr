@@ -160,17 +160,16 @@ xssmgr_module_selectors[10-core]=xssmgr_core_selector
 # -----------------------------------------------------------------------------
 # Built-in on_start module: xset
 # Manages the X server's XScreenSaver extension settings.  Used to
-# configure when xss-lock receives notifications about the system
-# becoming idle.
+# configure when xss receives notifications about the system becoming
+# idle.
 
 function xssmgr_mod_xset() {
 	case "$1" in
 		start)
 			# We configure the X screen saver to "activate" at the
-			# requested idle time of the first idle hook, with a cycle
-			# duration of the time between the first and last idle
-			# hook.  The last idle hook should be a terminal state
-			# such as the lock screen or a power action.
+			# requested idle time of the first idle hook.  Beyond
+			# that, the timer module will activate and sleep until the
+			# next idle hook.
 			local min_timeout=1000000000
 			local max_timeout=0
 			local line
@@ -188,12 +187,7 @@ function xssmgr_mod_xset() {
 			xssmgr_logv 'mod_xset: Configuring X screensaver for idle hooks in the %d .. %d range.' "$min_timeout" "$max_timeout"
 			if (( max_timeout > 0 ))
 			then
-				if (( min_timeout < max_timeout ))
-				then
-					xset s $min_timeout $((max_timeout - min_timeout))
-				else
-					xset s $min_timeout
-				fi
+				xset s $min_timeout 0
 			else
 				xset s off
 			fi
