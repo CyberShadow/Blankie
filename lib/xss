@@ -95,12 +95,18 @@ def main():
 
     ss = ScreenSaver(disp)
 
-    def stop(*_args):
-        sys.stderr.write('xssmgr/xss: Got SIGTERM - exiting. (Ignore errors below.)\n')
+    def stop(signum, _stack):
+        if verbose:
+            sys.stderr.write(f'xssmgr/xss: Got signal {signum} - exiting. (Ignore errors below.)\n')
+        else:
+            # Silence harmless exceptions due to disconnecting from a signal handler
+            sys.stderr = open(os.devnull, 'w')
+
         ss.stop()
         ss.d.close()
 
     signal.signal(signal.SIGTERM, stop)
+    signal.signal(signal.SIGPIPE, stop)
 
     ss.run()
 
