@@ -434,8 +434,6 @@ function xssmgr_unlock() {
 # When active, sleeps until the next scheduled on_idle hook, and prods
 # the main event loop to ensure on_idle hooks are activated
 # accordingly.
-# By default, activated and deactivated by the xsslock module, but
-# could work as an on_start module instead of xsslock.
 
 # PID of sleeping instance, which waits until the next event
 xssmgr_timer_pid=
