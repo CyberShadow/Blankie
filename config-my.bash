@@ -90,7 +90,8 @@ function xssmgr_config() {
 
 	# Register our selected modules at their corresponding idle times.
 
-	xssmgr_xbacklight_duration=$fade
+	xssmgr_xbacklight_args=(-perceived)
+	xssmgr_xbacklight_set_args=(-time $((fade * 1000)) -fps 15)
 	xssmgr_on_idle $((delay - fade)) xbacklight
 
 	xssmgr_on_idle $delay $action
