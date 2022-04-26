@@ -31,13 +31,13 @@ function xssmgr_mod_xbacklight() {
 				xssmgr_logv 'mod_xbacklight: Got original brightness (%s).' "$xssmgr_xbacklight_brightness"
 				local args=(xbacklight "${xssmgr_xbacklight_args[@]}" -set 0 "${xssmgr_xbacklight_set_args[@]}")
 				xssmgr_logv 'mod_xbacklight: Running:%s' "$(printf ' %q' "${args[@]}")"
-				"${args[@]}" | {
+				"${args[@]}" > >(
 					# Get notified when it exits, so we can forget the PID
 					# (so we later don't kill an innocent process due to
 					# PID reuse).
 					cat # Wait for EOF
 					xssmgr_notify module xbacklight _exited
-				} &
+				) &
 				xssmgr_xbacklight_pid=$!
 				xssmgr_logv 'mod_xbacklight: Started xbacklight (PID %d).' "$xssmgr_xbacklight_pid"
 			fi
