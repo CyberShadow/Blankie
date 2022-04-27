@@ -4,9 +4,15 @@
 # (e.g. AC power is connected or disconnected), which would require
 # re-evaluating xssmgr's configuration.
 
-xssmgr_upower_pid=
-
 function xssmgr_mod_upower() {
+	# Private state:
+
+	# PID of the managed upower process.
+	local -n xssmgr_upower_pid=xssmgr_${xssmgr_module_hash}_pid
+	xssmgr_upower_pid=${xssmgr_upower_pid-}
+
+	# Implementation:
+
 	case "$1" in
 		start)
 			if [[ -z "$xssmgr_upower_pid" ]]
@@ -38,6 +44,6 @@ function xssmgr_upower_reader() {
 	local _
 	while IFS= read -r _
 	do
-		xssmgr_notify module upower _ping
+		xssmgr_notify module "$xssmgr_module" _ping
 	done
 }

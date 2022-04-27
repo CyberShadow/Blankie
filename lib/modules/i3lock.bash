@@ -1,23 +1,30 @@
 # External on_lock xssmgr module: i3lock
 # Manages an i3lock instance.
 
-# PID of the forked i3lock process.
-xssmgr_i3lock_inner_pid=
-
-# PID of the process waiting for i3lock to exit.
-xssmgr_i3lock_cat_pid=
-
-# Additional arguments. User configurable.
-if [[ ! -v xssmgr_i3lock_args ]] ; then
-	xssmgr_i3lock_args=()
-fi
-
 function xssmgr_mod_i3lock() {
 	# Our goals:
 	# - Start i3lock when this module is started.
 	# - If i3lock fails to start (initialize), abort.
 	# - Stop (kill) i3lock, if it is running, when this module is stopped.
 	# - Exit the locked state, stopping other on_lock modules, when i3lock exits.
+
+	# Parameters:
+
+	# Additional i3lock arguments.
+	local xssmgr_i3lock_args=("${xssmgr_module_args[@]}")
+
+	# Private state:
+
+	# PID of the forked i3lock process.
+	local -n xssmgr_i3lock_inner_pid=xssmgr_${xssmgr_module_hash}_inner_pid
+	xssmgr_i3lock_inner_pid=${xssmgr_i3lock_inner_pid-}
+
+	# PID of the process waiting for i3lock to exit.
+	local -n xssmgr_i3lock_cat_pid=xssmgr_${xssmgr_module_hash}_cat_pid
+	xssmgr_i3lock_cat_pid=${xssmgr_i3lock_cat_pid-}
+
+	# Implementation:
+
 	case "$1" in
 		start)
 			if [[ -z "$xssmgr_i3lock_inner_pid" ]]
@@ -107,5 +114,5 @@ function xssmgr_i3lock_reader() {
 	cat
 	# If we're here, cat reached EOF, which means that all write ends
 	# of the pipe were closed, which means that i3lock exited.
-	xssmgr_notify module i3lock _exit "$BASHPID"
+	xssmgr_notify module "$xssmgr_module" _exit "$BASHPID"
 }

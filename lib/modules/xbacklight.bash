@@ -2,27 +2,46 @@
 # Runs and manages an xbacklight process, which fades the screen to
 # black over the configured duration.
 
-# Additional arguments, used for both querying and setting (such as
-# -ctrl or -perceived). User configurable.
-if [[ ! -v xssmgr_xbacklight_args ]] ; then
-	xssmgr_xbacklight_args=()
-fi
-
-# Additional arguments for fading the brightness (such as -time, -fps
-# or -steps). User configurable. Generally should have -time
-# corresponding to the time until the next/final idle event, and
-# -steps or -fps.
-if [[ ! -v xssmgr_xbacklight_set_args ]] ; then
-	xssmgr_xbacklight_set_args=(-fps 15)
-fi
-
-# PID of any running xbacklight process.
-xssmgr_xbacklight_pid=
-
-# The original screen brightness.
-xssmgr_xbacklight_brightness=
-
 function xssmgr_mod_xbacklight() {
+	# Parameters:
+
+	# Additional arguments, used for both querying and setting (such as
+	# -ctrl or -perceived).
+	local xssmgr_xbacklight_args=()
+
+	# Additional arguments for fading the brightness (such as -time,
+	# -fps or -steps). Generally should have -time corresponding to
+	# the time until the next/final idle event, and -steps or -fps.
+	local xssmgr_xbacklight_set_args=()
+
+	# Sort module arguments into the above.
+	local i
+	for (( i=0; i < ${#xssmgr_module_args[@]}; ))
+	do
+		case "${xssmgr_module_args[$i]}" in
+			-ctrl|-display|-perceived)
+				xssmgr_xbacklight_args+=("${xssmgr_module_args[$i]}" "${xssmgr_module_args[$((i+1))]}")
+				i=$((i+2))
+				;;
+			*)
+				xssmgr_xbacklight_set_args+=("${xssmgr_module_args[$i]}")
+				i=$((i+1))
+				;;
+		esac
+	done
+
+	# Private state:
+
+	# PID of any running xbacklight process.
+	local -n xssmgr_xbacklight_pid=xssmgr_${xssmgr_module_hash}_pid
+	xssmgr_xbacklight_pid=${xssmgr_xbacklight_pid-}
+
+	# The original screen brightness.
+	local -n xssmgr_xbacklight_brightness=xssmgr_${xssmgr_module_hash}_brightness
+	xssmgr_xbacklight_brightness=${xssmgr_xbacklight_brightness-}
+
+	# Implementation:
+
 	case "$1" in
 		start)
 			if [[ -z "$xssmgr_xbacklight_pid" ]]
@@ -36,7 +55,7 @@ function xssmgr_mod_xbacklight() {
 					# (so we later don't kill an innocent process due to
 					# PID reuse).
 					cat # Wait for EOF
-					xssmgr_notify module xbacklight _exited
+					xssmgr_notify module "$xssmgr_module" _exited
 				) &
 				xssmgr_xbacklight_pid=$!
 				xssmgr_logv 'mod_xbacklight: Started xbacklight (PID %d).' "$xssmgr_xbacklight_pid"

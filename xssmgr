@@ -101,13 +101,16 @@ function xssmgr_quote() {
 # Configuration
 
 # Called from the user's configuration to register an on-start module.
-function xssmgr_on_start() { xssmgr_on_start_modules+=("$1") ; }
+# Usage: xssmgr_on_start MODULE [MODULE-PARAMETERS...]
+function xssmgr_on_start() { xssmgr_on_start_modules+=("$(xssmgr_quote "$@")") ; }
 
 # Called from the user's configuration to register an on-lock module.
-function xssmgr_on_lock() { xssmgr_on_lock_modules+=("$1") ; }
+# Usage: xssmgr_on_lock MODULE [MODULE-PARAMETERS...]
+function xssmgr_on_lock() { xssmgr_on_lock_modules+=("$(xssmgr_quote "$@")") ; }
 
 # Called from the user's configuration to register an on-idle module.
-function xssmgr_on_idle() { xssmgr_on_idle_modules+=("$1 $2") ; }
+# Usage: xssmgr_on_idle IDLE-SECONDS MODULE [MODULE-PARAMETERS...]
+function xssmgr_on_idle() { xssmgr_on_idle_modules+=("$(xssmgr_quote "$@")") ; }
 
 # (Re-)Load the configuration file.
 function xssmgr_load_config() {
@@ -210,10 +213,15 @@ function xssmgr_mod_xset() {
 # events from the X server.  Used to know when the system becomes or
 # stops being idle.
 
-# xss PID
-xssmgr_xss_pid=
-
 function xssmgr_mod_xss() {
+	# Private state:
+
+	# xss PID
+	local -n xssmgr_xss_pid=xssmgr_${xssmgr_module_hash}_pid
+	xssmgr_xss_pid=${xssmgr_xss_pid-}
+
+	# Implementation:
+
 	case "$1" in
 		start)
 			# Start xss
@@ -281,7 +289,7 @@ function xssmgr_xss_reader() {
 	local line
 	while read -r -a line -u "$fd"
 	do
-		xssmgr_notify module xss _event "${line[@]}"
+		xssmgr_notify module "$xssmgr_module" _event "${line[@]}"
 	done
 	xssmgr_logv 'mod_xss: xss exited (EOF).'
 }
@@ -355,10 +363,15 @@ function xssmgr_unlock() {
 # the main event loop to ensure on_idle hooks are activated
 # accordingly.
 
-# PID of sleeping instance, which waits until the next event
-xssmgr_timer_pid=
-
 function xssmgr_mod_timer() {
+	# Private state:
+
+	# PID of sleeping instance, which waits until the next event
+	local -n xssmgr_timer_pid=xssmgr_${xssmgr_module_hash}_pid
+	xssmgr_timer_pid=${xssmgr_timer_pid-}
+
+	# Implementation:
+
 	case "$1" in
 		start)
 			xssmgr_timer_schedule
@@ -426,22 +439,22 @@ function xssmgr_timer_wait() {
 
 	sleep "$s"
 
-	xssmgr_notify module timer _wait_done
+	xssmgr_notify module "$xssmgr_module" _wait_done
 }
 
 # -----------------------------------------------------------------------------
 # Daemon implementation
 
 function xssmgr_load_module() {
-	local xssmgr_module=$1
+	local xssmgr_module_name=$1
 
 	local xssmgr_module_dir
 	for xssmgr_module_dir in "${xssmgr_module_dirs[@]}"
 	do
-		local xssmgr_module_file="$xssmgr_module_dir"/"$xssmgr_module".bash
+		local xssmgr_module_file="$xssmgr_module_dir"/"$xssmgr_module_name".bash
 		if [[ -f "$xssmgr_module_file" ]]
 		then
-			xssmgr_logv 'Loading module %q from %q' "$xssmgr_module" "$xssmgr_module_file"
+			xssmgr_logv 'Loading module %q from %q' "$xssmgr_module_name" "$xssmgr_module_file"
 			# shellcheck source=/dev/null
 			. "$xssmgr_module_file"
 			return 0
@@ -449,21 +462,37 @@ function xssmgr_load_module() {
 	done
 
 	xssmgr_log 'Module %q not found (looked in: %s)' \
-			   "$xssmgr_module" \
+			   "$xssmgr_module_name" \
 			   "${xssmgr_module_dirs[*]}"
 	exit 1
 }
 
+# A module is identified by its name, followed by any arguments, all
+# as a single string.  Arguments are quoted with printf %q as needed.
 function xssmgr_module_command() {
 	local xssmgr_module=$1
 	local xssmgr_arguments=("${@:2}")
 
-	local xssmgr_module_func=xssmgr_mod_"$xssmgr_module"
+	local -a xssmgr_module_arr
+	eval "xssmgr_module_arr=($xssmgr_module)"  # Split, minding quotes
+
+	local xssmgr_module_name="${xssmgr_module_arr[0]}"
+	# Modules can read and parse their parameters from this variable.
+	local xssmgr_module_args=("${xssmgr_module_arr[@]:1}")
+
+	local xssmgr_module_func=xssmgr_mod_"$xssmgr_module_name"
 	if ! declare -F "$xssmgr_module_func" > /dev/null
 	then
-		xssmgr_logv 'Auto-loading module %q' "$xssmgr_module"
-		xssmgr_load_module "$xssmgr_module"
+		xssmgr_logv 'Auto-loading module %q' "$xssmgr_module_name"
+		xssmgr_load_module "$xssmgr_module_name"
 	fi
+
+	# A string uniquely identifying this module and its parameters,
+	# which can be used in variable names for maintaining
+	# module-private state.
+	local xssmgr_module_hash
+	xssmgr_module_hash=$(sha1sum <<< "$xssmgr_module")
+	xssmgr_module_hash=${xssmgr_module_hash%% *}
 
 	"$xssmgr_module_func" "${xssmgr_arguments[@]}"
 }
@@ -471,8 +500,8 @@ function xssmgr_module_command() {
 # Start or stop modules, synchronizing xssmgr_running_modules
 # against xssmgr_wanted_modules.
 function xssmgr_start_stop_modules() {
-	# xssmgr_logv 'Running modules: %s' "${xssmgr_running_modules[*]}"
-	# xssmgr_logv 'Wanted  modules: %s' "${xssmgr_wanted_modules[*]}"
+	# xssmgr_logv 'Running modules:%s' "$(printf '\n- %s' "${xssmgr_running_modules[@]}")"
+	# xssmgr_logv 'Wanted  modules:%s' "$(printf '\n- %s' "${xssmgr_wanted_modules[@]}")"
 
 	# Because modules may themselves start or stop other modules when
 	# they are started or stopped, support recursion by performing one
@@ -481,30 +510,50 @@ function xssmgr_start_stop_modules() {
 
 	# 1. Stop modules which we no longer want to be running.
 	# Do this in reverse order of starting them.
-	local i xssmgr_module
+	local i xssmgr_running_module xssmgr_wanted_module xssmgr_module_found
 	for (( i=${#xssmgr_running_modules[@]} - 1; i >= 0; i-- ))
 	do
-		xssmgr_module=${xssmgr_running_modules[$i]}
-		if [[ " ${xssmgr_wanted_modules[*]} " != *" $xssmgr_module "* ]]
+		xssmgr_running_module=${xssmgr_running_modules[$i]}
+		xssmgr_module_found=false
+		for xssmgr_wanted_module in "${xssmgr_wanted_modules[@]}"
+		do
+			if [[ "$xssmgr_running_module" == "$xssmgr_wanted_module" ]]
+			then
+				xssmgr_module_found=true
+				break
+			fi
+		done
+
+		if ! $xssmgr_module_found
 		then
 			xssmgr_running_modules=("${xssmgr_running_modules[@]:0:$i}" "${xssmgr_running_modules[@]:$((i+1))}")
-			xssmgr_logv 'Stopping module: %q' "$xssmgr_module"
-			xssmgr_module_command "$xssmgr_module" stop
-			xssmgr_logv 'Stopped module: %q' "$xssmgr_module"
+			xssmgr_logv 'Stopping module: %s' "$xssmgr_running_module"
+			xssmgr_module_command "$xssmgr_running_module" stop
+			xssmgr_logv 'Stopped module: %s' "$xssmgr_running_module"
 			xssmgr_start_stop_modules  # Recurse
 			return 0
 		fi
 	done
 
 	# 2. Start modules which we now want to be running.
-	for xssmgr_module in "${xssmgr_wanted_modules[@]}"
+	for xssmgr_wanted_module in "${xssmgr_wanted_modules[@]}"
 	do
-		if [[ " ${xssmgr_running_modules[*]} " != *" $xssmgr_module "* ]]
+		xssmgr_module_found=false
+		for xssmgr_running_module in "${xssmgr_running_modules[@]}"
+		do
+			if [[ "$xssmgr_running_module" == "$xssmgr_wanted_module" ]]
+			then
+				xssmgr_module_found=true
+				break
+			fi
+		done
+
+		if ! $xssmgr_module_found
 		then
-			xssmgr_running_modules+=("$xssmgr_module")
-			xssmgr_logv 'Starting module: %q' "$xssmgr_module"
-			xssmgr_module_command "$xssmgr_module" start
-			xssmgr_logv 'Started module: %q' "$xssmgr_module"
+			xssmgr_running_modules+=("$xssmgr_wanted_module")
+			xssmgr_logv 'Starting module: %s' "$xssmgr_wanted_module"
+			xssmgr_module_command "$xssmgr_wanted_module" start
+			xssmgr_logv 'Started module: %s' "$xssmgr_wanted_module"
 			xssmgr_start_stop_modules  # Recurse
 			return 0
 		fi

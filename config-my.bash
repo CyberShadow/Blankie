@@ -51,7 +51,8 @@
 function xssmgr_config() {
 	# Let's define some helper variables first.
 	# We want a much shorter delay if the lock screen is already active.
-	local delay action fade
+	local delay fade
+	local -a action
 
 	if (( ! xssmgr_locked ))
 	then
@@ -65,7 +66,7 @@ function xssmgr_config() {
 		else
 			delay=$((5 * 60))   # A shorter timeout on other machines (laptops).
 		fi
-		action=lock             # Lock screen after 5 or 10 minutes
+		action=(lock)           # Lock screen after 5 or 10 minutes
 		fade=60                 # Fade to black over 1 minute before locking the screen
 	else
 		# Settings for when the lock screen is active.
@@ -76,25 +77,19 @@ function xssmgr_config() {
 		if [[ -f "$bat_status" && "$(< $bat_status)" == "Discharging" ]]
 		then
 			# If running on battery, suspend the system.
-			# Module parameters are passed to modules via namespaced
-			# variables - see each module's documentation for what
-			# parameters it accepts.
-			action=power
-			xssmgr_power_action=suspend
+			action=(power suspend)
 		else
 			# Otherwise (AC power), just turn the screen(s) off.
-			action=dpms
+			action=(dpms)
 		fi
 		fade=5                  # Fade to black over 5 seconds before turning off
 	fi
 
 	# Register our selected modules at their corresponding idle times.
 
-	xssmgr_xbacklight_args=()
-	xssmgr_xbacklight_set_args=(-time $((fade * 1000)) -fps 15)
-	xssmgr_on_idle $((delay - fade)) xbacklight
+	xssmgr_on_idle $((delay - fade)) xbacklight -time $((fade * 1000)) -fps 15
 
-	xssmgr_on_idle $delay $action
+	xssmgr_on_idle $delay "${action[@]}"
 
 	# Register some on-lock modules, to do some more interesting things
 	# when the screen is locked.  These will be started when the lock
@@ -115,15 +110,13 @@ function xssmgr_config() {
 	# # Change the keyboard to US QWERTY before locking the screen.
 	# # Avoid frustration due to your password not working when you were
 	# # actually typing it in Cyrillic.
-	# xssmgr_xkbmap_args=(-layout us)
-	# xssmgr_on_lock xkbmap
+	# xssmgr_on_lock xkbmap -layout us
 	xssmgr_on_lock xkblayout
 
 	# Finally, add the lock screen itself.  It should be the last module
 	# to run, to ensure that other security modules run before the lock
 	# screen becomes visible, thus confirming that the machine is secure.
-	xssmgr_i3lock_args=(--show-failed-attempts --image ~/data/images/wallpaper/blurred.png)
-	xssmgr_on_lock i3lock
+	xssmgr_on_lock i3lock --show-failed-attempts --image ~/data/images/wallpaper/blurred.png
 }
 
 # Custom on_lock xssmgr module: udiskie
