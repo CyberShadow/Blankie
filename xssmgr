@@ -92,6 +92,11 @@ function xssmgr_logv() {
 	fi
 }
 
+function xssmgr_quote() {
+	printf -- %q "$1"
+	if [[ $# -gt 1 ]]; then printf -- ' %q' "${@:2}" ; fi
+}
+
 # -----------------------------------------------------------------------------
 # Configuration
 
@@ -652,8 +657,11 @@ function xssmgr_daemon_loop() {
 
 	while true
 	do
+		local xssmgr_command_str
+		read -r xssmgr_command_str < "$XSSMGR_FIFO"
 		local -a xssmgr_command
-		read -r -a xssmgr_command < "$XSSMGR_FIFO"
+		eval "xssmgr_command=($xssmgr_command_str)"  # Split, minding quotes
+
 		xssmgr_logv 'Got command:%s' "$(printf -- ' %q' "${xssmgr_command[@]}")"
 		xssmgr_daemon_command "${xssmgr_command[@]}"
 	done
@@ -711,7 +719,7 @@ function xssmgr_daemon() {
 # Send a line to the daemon event loop
 function xssmgr_notify() {
 	local message
-	message=$(printf -- '%s ' "$@")$'\n'
+	message=$(xssmgr_quote "$@")$'\n'
 	# Send the message in one write.
 	printf -- '%s' "$message" > "$XSSMGR_FIFO"
 
