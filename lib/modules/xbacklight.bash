@@ -43,6 +43,12 @@ function xssmgr_mod_xbacklight() {
 	# Implementation:
 
 	case "$1" in
+		hash)
+			# Don't stop+start this module (thus momentarily resetting
+			# brightness) when e.g. the -time parameter changes.
+			xssmgr_module_id=$(printf '%q ' "${xssmgr_xbacklight_args[@]}" | sha1sum)
+			xssmgr_module_id=${xssmgr_module_id%% *}
+			;;
 		start)
 			if [[ -z "$xssmgr_xbacklight_pid" ]]
 			then
