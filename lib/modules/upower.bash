@@ -8,7 +8,7 @@ function xssmgr_mod_upower() {
 	# Private state:
 
 	# PID of the managed upower process.
-	local -n xssmgr_upower_pid=xssmgr_${xssmgr_module_hash}_pid
+	local -n xssmgr_upower_pid=xssmgr_${xssmgr_module_id}_pid
 	xssmgr_upower_pid=${xssmgr_upower_pid-}
 
 	# Implementation:
@@ -44,6 +44,6 @@ function xssmgr_upower_reader() {
 	local _
 	while IFS= read -r _
 	do
-		xssmgr_notify module "$xssmgr_module" _ping
+		xssmgr_notify module "$xssmgr_module_id" _ping
 	done
 }

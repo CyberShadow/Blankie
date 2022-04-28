@@ -33,11 +33,11 @@ function xssmgr_mod_xbacklight() {
 	# Private state:
 
 	# PID of any running xbacklight process.
-	local -n xssmgr_xbacklight_pid=xssmgr_${xssmgr_module_hash}_pid
+	local -n xssmgr_xbacklight_pid=xssmgr_${xssmgr_module_id}_pid
 	xssmgr_xbacklight_pid=${xssmgr_xbacklight_pid-}
 
 	# The original screen brightness.
-	local -n xssmgr_xbacklight_brightness=xssmgr_${xssmgr_module_hash}_brightness
+	local -n xssmgr_xbacklight_brightness=xssmgr_${xssmgr_module_id}_brightness
 	xssmgr_xbacklight_brightness=${xssmgr_xbacklight_brightness-}
 
 	# Implementation:
@@ -55,7 +55,7 @@ function xssmgr_mod_xbacklight() {
 					# (so we later don't kill an innocent process due to
 					# PID reuse).
 					cat # Wait for EOF
-					xssmgr_notify module "$xssmgr_module" _exited
+					xssmgr_notify module "$xssmgr_module_id" _exited
 				) &
 				xssmgr_xbacklight_pid=$!
 				xssmgr_logv 'mod_xbacklight: Started xbacklight (PID %d).' "$xssmgr_xbacklight_pid"

@@ -17,7 +17,7 @@ function xssmgr_mod_xkbmap() {
 	local xssmgr_xkbmap_args=("${xssmgr_xkbmap_args[@]}")
 
 	# Private state:
-	local -n xssmgr_xkbmap_state=xssmgr_${xssmgr_module_hash}_state
+	local -n xssmgr_xkbmap_state=xssmgr_${xssmgr_module_id}_state
 
 	case "$1" in
 		start)

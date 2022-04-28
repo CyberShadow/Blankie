@@ -16,11 +16,11 @@ function xssmgr_mod_i3lock() {
 	# Private state:
 
 	# PID of the forked i3lock process.
-	local -n xssmgr_i3lock_inner_pid=xssmgr_${xssmgr_module_hash}_inner_pid
+	local -n xssmgr_i3lock_inner_pid=xssmgr_${xssmgr_module_id}_inner_pid
 	xssmgr_i3lock_inner_pid=${xssmgr_i3lock_inner_pid-}
 
 	# PID of the process waiting for i3lock to exit.
-	local -n xssmgr_i3lock_cat_pid=xssmgr_${xssmgr_module_hash}_cat_pid
+	local -n xssmgr_i3lock_cat_pid=xssmgr_${xssmgr_module_id}_cat_pid
 	xssmgr_i3lock_cat_pid=${xssmgr_i3lock_cat_pid-}
 
 	# Implementation:
@@ -114,5 +114,5 @@ function xssmgr_i3lock_reader() {
 	cat
 	# If we're here, cat reached EOF, which means that all write ends
 	# of the pipe were closed, which means that i3lock exited.
-	xssmgr_notify module "$xssmgr_module" _exit "$BASHPID"
+	xssmgr_notify module "$xssmgr_module_id" _exit "$BASHPID"
 }

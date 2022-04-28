@@ -48,6 +48,9 @@ else
 	xssmgr_lib_dir=/usr/lib/xssmgr
 fi
 
+# Map from module instance IDs to module names + parameters.
+declare -A xssmgr_modules
+
 # Module search path.  Populated in xssmgr_load_config.
 xssmgr_module_dirs=()
 
@@ -102,15 +105,15 @@ function xssmgr_quote() {
 
 # Called from the user's configuration to register an on-start module.
 # Usage: xssmgr_on_start MODULE [MODULE-PARAMETERS...]
-function xssmgr_on_start() { xssmgr_on_start_modules+=("$(xssmgr_quote "$@")") ; }
+function xssmgr_on_start() { xssmgr_module_id "$@" ; xssmgr_on_start_modules+=("$xssmgr_module_id") ; }
 
 # Called from the user's configuration to register an on-lock module.
 # Usage: xssmgr_on_lock MODULE [MODULE-PARAMETERS...]
-function xssmgr_on_lock() { xssmgr_on_lock_modules+=("$(xssmgr_quote "$@")") ; }
+function xssmgr_on_lock() { xssmgr_module_id "$@" ; xssmgr_on_lock_modules+=("$xssmgr_module_id") ; }
 
 # Called from the user's configuration to register an on-idle module.
 # Usage: xssmgr_on_idle IDLE-SECONDS MODULE [MODULE-PARAMETERS...]
-function xssmgr_on_idle() { xssmgr_on_idle_modules+=("$(xssmgr_quote "$@")") ; }
+function xssmgr_on_idle() { xssmgr_module_id "${@:2}" ; xssmgr_on_idle_modules+=("$1 $xssmgr_module_id") ; }
 
 # (Re-)Load the configuration file.
 function xssmgr_load_config() {
@@ -217,7 +220,7 @@ function xssmgr_mod_xss() {
 	# Private state:
 
 	# xss PID
-	local -n xssmgr_xss_pid=xssmgr_${xssmgr_module_hash}_pid
+	local -n xssmgr_xss_pid=xssmgr_${xssmgr_module_id}_pid
 	xssmgr_xss_pid=${xssmgr_xss_pid-}
 
 	# Implementation:
@@ -289,7 +292,7 @@ function xssmgr_xss_reader() {
 	local line
 	while read -r -a line -u "$fd"
 	do
-		xssmgr_notify module "$xssmgr_module" _event "${line[@]}"
+		xssmgr_notify module "$xssmgr_module_id" _event "${line[@]}"
 	done
 	xssmgr_logv 'mod_xss: xss exited (EOF).'
 }
@@ -306,7 +309,7 @@ function xssmgr_lock_selector() {
 	if (( xssmgr_locked ))
 	then
 		# Ensure lock module isn't stopped upon locking
-		xssmgr_wanted_modules+=(lock)
+		xssmgr_module_id lock ; xssmgr_wanted_modules+=("$xssmgr_module_id")
 		xssmgr_wanted_modules+=("${xssmgr_on_lock_modules[@]}")
 	fi
 }
@@ -367,7 +370,7 @@ function xssmgr_mod_timer() {
 	# Private state:
 
 	# PID of sleeping instance, which waits until the next event
-	local -n xssmgr_timer_pid=xssmgr_${xssmgr_module_hash}_pid
+	local -n xssmgr_timer_pid=xssmgr_${xssmgr_module_id}_pid
 	xssmgr_timer_pid=${xssmgr_timer_pid-}
 
 	# Implementation:
@@ -394,7 +397,7 @@ function xssmgr_mod_timer() {
 function xssmgr_timer_selector() {
 	if (( xssmgr_idle ))
 	then
-		xssmgr_wanted_modules+=(timer)
+		xssmgr_module_id timer ; xssmgr_wanted_modules+=("$xssmgr_module_id")
 	fi
 }
 xssmgr_module_selectors[50-timer]=xssmgr_timer_selector
@@ -439,7 +442,7 @@ function xssmgr_timer_wait() {
 
 	sleep "$s"
 
-	xssmgr_notify module "$xssmgr_module" _wait_done
+	xssmgr_notify module "$xssmgr_module_id" _wait_done
 }
 
 # -----------------------------------------------------------------------------
@@ -467,11 +470,50 @@ function xssmgr_load_module() {
 	exit 1
 }
 
-# A module is identified by its name, followed by any arguments, all
-# as a single string.  Arguments are quoted with printf %q as needed.
+# By default, a module instance is identified by the module name + its
+# parameters.  However, some modules require custom identification
+# logic, when some of their parameters should be allowed to change
+# without xssmgr restarting the module.
+# This function registers the module instance (saving its full
+# parameters) and outputs its ID in the homonym variable, running any
+# custom logic if present.
+function xssmgr_module_id() {
+	local xssmgr_module_name=$1
+	local xssmgr_module_args=("${@:2}")
+
+	local xssmgr_module_func=xssmgr_mod_"$xssmgr_module_name"
+	if ! declare -F "$xssmgr_module_func" > /dev/null
+	then
+		xssmgr_logv 'Auto-loading module %q' "$xssmgr_module_name"
+		xssmgr_load_module "$xssmgr_module_name"
+	fi
+
+	local xssmgr_module
+	xssmgr_module=$(xssmgr_quote "$xssmgr_module_name" "${xssmgr_module_args[@]}")
+
+	# Non-local (return value)
+	declare -g xssmgr_module_id
+	xssmgr_module_id=dummy_id
+
+	"$xssmgr_module_func" hash
+
+	if [[ "$xssmgr_module_id" == dummy_id ]]
+	then
+		# Use default hashing logic
+		xssmgr_module_id=$(sha1sum <<< "$xssmgr_module")
+		xssmgr_module_id=${xssmgr_module_id%% *}
+	fi
+
+	xssmgr_modules[$xssmgr_module_id]=$xssmgr_module
+}
+
+# A module instance is identified by its ID, as generated and saved in
+# xssmgr_module_id.
 function xssmgr_module_command() {
-	local xssmgr_module=$1
+	local xssmgr_module_id=$1
 	local xssmgr_arguments=("${@:2}")
+
+	local xssmgr_module=${xssmgr_modules[$xssmgr_module_id]}
 
 	local -a xssmgr_module_arr
 	eval "xssmgr_module_arr=($xssmgr_module)"  # Split, minding quotes
@@ -481,19 +523,8 @@ function xssmgr_module_command() {
 	local xssmgr_module_args=("${xssmgr_module_arr[@]:1}")
 
 	local xssmgr_module_func=xssmgr_mod_"$xssmgr_module_name"
-	if ! declare -F "$xssmgr_module_func" > /dev/null
-	then
-		xssmgr_logv 'Auto-loading module %q' "$xssmgr_module_name"
-		xssmgr_load_module "$xssmgr_module_name"
-	fi
-
-	# A string uniquely identifying this module and its parameters,
-	# which can be used in variable names for maintaining
-	# module-private state.
-	local xssmgr_module_hash
-	xssmgr_module_hash=$(sha1sum <<< "$xssmgr_module")
-	xssmgr_module_hash=${xssmgr_module_hash%% *}
-
+	# At this point, the function is expected to have already been
+	# loaded in xssmgr_module_id.
 	"$xssmgr_module_func" "${xssmgr_arguments[@]}"
 }
 
@@ -527,9 +558,9 @@ function xssmgr_start_stop_modules() {
 		if ! $xssmgr_module_found
 		then
 			xssmgr_running_modules=("${xssmgr_running_modules[@]:0:$i}" "${xssmgr_running_modules[@]:$((i+1))}")
-			xssmgr_logv 'Stopping module: %s' "$xssmgr_running_module"
+			xssmgr_logv 'Stopping module %s' "${xssmgr_modules[$xssmgr_running_module]}"
 			xssmgr_module_command "$xssmgr_running_module" stop
-			xssmgr_logv 'Stopped module: %s' "$xssmgr_running_module"
+			xssmgr_logv 'Stopped module: %s' "${xssmgr_modules[$xssmgr_running_module]}"
 			xssmgr_start_stop_modules  # Recurse
 			return 0
 		fi
@@ -551,9 +582,9 @@ function xssmgr_start_stop_modules() {
 		if ! $xssmgr_module_found
 		then
 			xssmgr_running_modules+=("$xssmgr_wanted_module")
-			xssmgr_logv 'Starting module: %s' "$xssmgr_wanted_module"
+			xssmgr_logv 'Starting module: %s' "${xssmgr_modules[$xssmgr_wanted_module]}"
 			xssmgr_module_command "$xssmgr_wanted_module" start
-			xssmgr_logv 'Started module: %s' "$xssmgr_wanted_module"
+			xssmgr_logv 'Started module: %s' "${xssmgr_modules[$xssmgr_wanted_module]}"
 			xssmgr_start_stop_modules  # Recurse
 			return 0
 		fi
@@ -595,9 +626,13 @@ function xssmgr_reconfigure() {
 	xssmgr_logv 'Reconfiguring.'
 
 	# Reset settings before (re-)loading configuration file.
-	xssmgr_on_start_modules=(xset xss)
+	xssmgr_on_start_modules=()
 	xssmgr_on_lock_modules=()
 	xssmgr_on_idle_modules=()
+
+	# Add core modules.
+	xssmgr_module_id xset ; xssmgr_on_start_modules+=("$xssmgr_module_id")
+	xssmgr_module_id xss  ; xssmgr_on_start_modules+=("$xssmgr_module_id")
 
 	# Evaluate the user-defined configuration function.
 	xssmgr_config
@@ -827,8 +862,15 @@ function main() {
 			xssmgr_query "$@"
 			;;
 		# Internal commands:
-		module) # Synchronously execute module subcommand, outside the daemon process
-			xssmgr_module_command "${@:2}"
+		module)
+			# Synchronously instantiate a module and execute a module
+			# subcommand, outside the daemon process.
+			local xssmgr_module=$2
+			local -a xssmgr_module_arr
+			eval "xssmgr_module_arr=($xssmgr_module)"  # Split, minding quotes
+
+			xssmgr_module_id "${xssmgr_module_arr[@]}"
+			xssmgr_module_command "$xssmgr_module_id" "${@:3}"
 			;;
 		*)
 			xssmgr_log 'Unknown command: %q' "$1"
