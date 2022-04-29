@@ -76,4 +76,5 @@ class XssmgrFinder(importlib.abc.MetaPathFinder):
 
 sys.meta_path.append(XssmgrFinder())
 
-import xssmgr.xssmgr
+import xssmgr
+xssmgr.main(*sys.argv[1:])
