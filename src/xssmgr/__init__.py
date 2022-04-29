@@ -470,6 +470,7 @@ def module_command(module_id_, *arguments):
 	module_func = 'mod_' + module_name
 	# At this point, the function is expected to have already been
 	# loaded in module_id.
+	# logv('Calling %s with %s', module_func, arguments)
 	globals()[module_func](*arguments)
 
 # Start or stop modules, synchronizing running_modules
