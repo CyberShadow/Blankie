@@ -171,6 +171,11 @@ def load_config():
 # Core functionality: run on_start and on_idle modules
 
 def core_selector():
+	wanted_modules.extend([
+		get_module_id('xset'),
+		get_module_id('xss'),
+	])
+
 	wanted_modules.extend(on_start_modules)
 
 	for (timeout, module) in on_idle_modules:
@@ -534,10 +539,6 @@ def reconfigure():
 	on_start_modules = []
 	on_lock_modules = []
 	on_idle_modules = []
-
-	# Add core modules.
-	on_start_modules.append(get_module_id('xset'))
-	on_start_modules.append(get_module_id('xss'))
 
 	# Evaluate the user-defined configuration function.
 	config()
