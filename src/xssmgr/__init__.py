@@ -561,8 +561,18 @@ def daemon_command(*args):
 				f.write('Registered on_lock modules:\n')
 				f.write(''.join('- %s\n' % m for m in on_lock_modules))
 		case 'stop':
-			log('Daemon is exiting.')
-			sys.exit(0)  # Clean-up will be performed by the exit trap.
+			log('Daemon is stopping...')
+			# Python waits for daemon threads to exit before calling
+			# atexit handlers. Because those threads are stopped in
+			# response to cleanup performed in our atexit handler,
+			# this deadlocks us.  Run the shutdown function manually
+			# to avoid this.
+			daemon_shutdown()
+			atexit.unregister(daemon_shutdown)
+
+			time.sleep(1)
+			logv('Daemon is exiting.')
+			sys.exit(0)
 		case 'reload':
 			log('Reloading configuration.')
 			load_config()
@@ -604,7 +614,7 @@ def daemon_shutdown():
 	with contextlib.suppress(FileNotFoundError):
 		os.remove(pid_file)
 
-	logv('Shutdown complete, exiting.')
+	logv('Shutdown complete.')
 
 # Daemon main event loop.
 def daemon_loop():
