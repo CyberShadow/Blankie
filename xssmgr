@@ -1,80 +1,9 @@
-#!/usr/bin/python
+#!/bin/sh
 
 # X ScreenSaver manager
-# Entry point - configures search paths and runs main module
+# POSIX launch script
 
-# We would like to configure the Python import mechanism to allow
-# loading xssmgr source components, modules (in-tree and
-# user-supplied), and the user configuration. Our goals are:
-#
-# - `import xssmgr.util` (from within modules or elsewhere) should
-#   import the corresponding source module.
-#
-# - The main module should not also be duplicated as __main__ (so it
-#   cannot be the entry point).
-#
-# - `import xssmgr.modules.foo` should refer to the 'foo' module,
-#   whether it's part of xssmgr, user-supplied, or third-party.
-#
-# - `import xssmgr.config` should import the user configuration
-#   (e.g. in '~/.config/xssmgr/config.py' or '/etc/xssmgr/config.py').
-#
-# - `import foo` should not look in '/etc/foo.py', which is why
-#   we can't just add '/etc' to sys.path.
+# You can use this script to run xssmgr directly from a source
+# checkout (without first "installing" it with pip / setup.py).
 
-import importlib.abc
-import importlib.machinery
-import importlib.util
-import os
-import sys
-
-# Allow running xssmgr directly from a source checkout or extracted
-# tarball.
-is_source_checkout = os.path.exists(os.path.dirname(__file__) + '/src/xssmgr')
-
-# System installation prefix.
-prefix = '/usr'
-
-class XssmgrFinder(importlib.abc.MetaPathFinder):
-	def find_spec(self, fullname, _path, _target=None):
-		check_config = False
-		check_source = False
-		check_lib = False
-
-		if fullname == 'xssmgr.config' or \
-		   fullname.startswith('xssmgr.config.'):
-			check_config = True
-		elif fullname.startswith('xssmgr.modules.'):
-			check_config = True
-			check_source = is_source_checkout
-			check_lib = True
-		elif fullname == 'xssmgr' or \
-			 fullname.startswith('xssmgr.'):
-			check_source = is_source_checkout
-			check_lib = not is_source_checkout
-
-		paths = []
-		if check_config:
-			config_dirs = os.getenv('XDG_CONFIG_DIRS', '/etc').split(':')
-			config_dirs = [os.getenv('XDG_CONFIG_HOME', os.environ['HOME'] + '/.config')] + config_dirs
-			paths.extend(config_dirs)
-		if check_source:
-			source_dir = os.path.dirname(__file__) + '/src'
-			paths.append(source_dir)
-		if check_lib:
-			paths.append(prefix + '/lib')
-
-		for path in paths:
-			for filename in [
-					path + '/' + fullname.replace('.', '/') + '.py',
-					path + '/' + fullname.replace('.', '/') + '/__init__.py',
-			]:
-				if os.path.exists(filename):
-					return importlib.util.spec_from_file_location(fullname, filename)
-
-		return None
-
-sys.meta_path.append(XssmgrFinder())
-
-import xssmgr
-xssmgr.main(*sys.argv[1:])
+PYTHONPATH="$(dirname "$0")"/src:"$PYTHONPATH" "${PYTHON-python}" -m xssmgr "$@"

@@ -1,5 +1,3 @@
-#!/usr/bin/python
-
 # X ScreenSaver manager
 # Receives events and manages X screen saver settings, power,
 # and the screen locker.
@@ -36,7 +34,7 @@ Commands:
 # External globals - made available to the configuration and modules
 
 # Path to the xssmgr script.
-os.environ['XSSMGR'] = __file__
+os.environ['XSSMGR'] = sys.argv[0]
 
 # This session's runtime directory.  Modules may put state here.
 os.environ['XSSMGR_RUN_DIR'] = os.getenv(
@@ -58,10 +56,14 @@ verbose = int(os.getenv('XSSMGR_VERBOSE', '0'))
 # -----------------------------------------------------------------------------
 # Internal globals
 
+# Allow running xssmgr directly from a source checkout or extracted
+# tarball.
+is_source_checkout = __file__.endswith('/src/xssmgr/__init__.py')
+
 # Library directory.
-if os.path.exists(os.path.dirname(__file__) + '/.git'):
+if is_source_checkout:
 	# Running from a source checkout
-	lib_dir = os.path.dirname(__file__) + '/lib'
+	lib_dir = os.path.dirname(__file__) + '/../../lib'
 else:
 	lib_dir = '/usr/lib/xssmgr'
 
@@ -152,7 +154,7 @@ def load_config():
 	global module_dirs
 	module_dirs = (
 		[d + '/xssmgr/modules' for d in config_dirs] +
-		[lib_dir + '/modules']
+		[os.path.dirname(__file__) + '/modules']
 	)
 
 	for config_file in config_files:
@@ -694,7 +696,9 @@ def query(*args):
 # -----------------------------------------------------------------------------
 # Entry point
 
-def main(*args):
+def main():
+	args = sys.argv[1:]
+
 	os.makedirs(run_dir, exist_ok=True)
 	load_config()
 
