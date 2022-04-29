@@ -1,25 +1,20 @@
 # External on_idle xssmgr module: power
 # Runs a power action on start.
 
-function xssmgr_mod_power() {
+def mod_power(*args):
 	# Parameters:
 
 	# The action to execute.  Should be one of suspend, hibernate,
 	# hybrid-sleep, suspend-then-hibernate, or poweroff.
-	local xssmgr_power_action=${xssmgr_module_args[0]-suspend}
+	power_action = module_args[0] if len(module_args) > 0 else 'suspend'
 
 	# Implementation:
 
-	case "$1" in
-		start)
-			if (( xssmgr_idle_time == xssmgr_max_time ))
-			then
+	match args[0]:
+		case 'start':
+			if idle_time == max_time:
 				# The system is already executing a power action.
-				return 0
-			fi
-			systemctl "$xssmgr_power_action"
-			;;
-		stop)
-			;;
-	esac
-}
+				return
+			subprocess.check_call(['systemctl', power_action])
+		case 'stop':
+			pass

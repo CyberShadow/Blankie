@@ -1,0 +1,86 @@
+# External on_idle xssmgr module: xbacklight
+# Runs and manages an xbacklight process, which fades the screen to
+# black over the configured duration.
+
+def mod_xbacklight(*args):
+	global module_id
+
+	# Parameters:
+
+	# Additional arguments, used for both querying and setting (such as
+	# -ctrl or -perceived).
+	xbacklight_args = []
+
+	# Additional arguments for fading the brightness (such as -time,
+	# -fps or -steps). Generally should have -time corresponding to
+	# the time until the next/final idle event, and -steps or -fps.
+	xbacklight_set_args = []
+
+	# Sort module arguments into the above.
+	i = 0
+	while i < len(module_args):
+		match module_args[i]:
+			case '-ctrl' | '-display' | '-perceived':
+				xbacklight_args += module_args[i : i+2]
+				i += 2
+			case _:
+				xbacklight_set_args += [module_args[i]]
+				i += 1
+
+	# Private state:
+	s = global_state.setdefault(module_id, types.SimpleNamespace(
+
+		# Popen of any running xbacklight process.
+		xbacklight = None,
+
+		# The original screen brightness.
+		brightness = None,
+
+	))
+
+	# Implementation:
+
+	match args[0]:
+		case 'hash':
+			# Don't stop+start this module (thus momentarily resetting
+			# brightness) when e.g. the -time parameter changes.
+			with subprocess.Popen(['sha1sum'], stdin=subprocess.PIPE, stdout=subprocess.PIPE) as p:
+				(module_id, _) = p.communicate(bytes(str(xbacklight_args), 'utf-8'))
+			module_id = module_id.split()[0]
+
+		case 'start':
+			if s.xbacklight is None:
+				s.brightness = subprocess.check_output(['xbacklight', *xbacklight_args, '-getf'])
+				logv('mod_xbacklight: Got original brightness (%s).', s.brightness)
+				args = ['xbacklight', *xbacklight_args, '-set', '0', *xbacklight_set_args]
+				logv('mod_xbacklight: Running: %s', str(args))
+				s.xbacklight = subprocess.Popen(args, stdout=subprocess.PIPE)
+				logv('mod_xbacklight: Started xbacklight (PID %d).', s.xbacklight.pid)
+				def wait_exit(module_id, f):
+					# Get notified when it exits, so we can forget the PID
+					# (so we later don't kill an innocent process due to
+					# PID reuse).
+					f.read() # Wait for EOF
+					notify('module', module_id, '_exited')
+				threading.Thread(target=wait_exit, args=(module_id, s.xbacklight.stdout)).start()
+
+		case 'stop':
+			if s.xbacklight is not None:
+				logv('mod_xbacklight: Killing xbacklight (PID %d)...', s.xbacklight.pid)
+				s.xbacklight.terminate()
+				s.xbacklight.communicate()
+				s.xbacklight = None
+				logv('mod_xbacklight: Done.')
+
+			if s.brightness is not None:
+				logv('mod_xbacklight: Restoring original brightness (%s).', s.brightness)
+				subprocess.call(['xbacklight', *xbacklight_args, '-set', s.brightness, '-steps', '1', '-time', '0'])
+				s.brightness = None
+
+		case '_exited':
+			if s.xbacklight is not None:
+				s.xbacklight.wait()
+				logv('mod_xbacklight: xbacklight exited with status %d.', s.xbacklight.returncode)
+				s.xbacklight = None
+			else:
+				logv('mod_xbacklight: Ignoring stale exit notification.')
