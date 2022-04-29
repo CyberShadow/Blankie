@@ -19,7 +19,7 @@ import types
 # Usage
 
 if len(sys.argv) == 1:
-	sys.write('''
+	sys.stderr.write('''
 Usage: xssmgr COMMAND
 
 Commands:
