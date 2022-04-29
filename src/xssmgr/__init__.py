@@ -723,13 +723,14 @@ def main():
 
 			with open(pid_file, 'rb') as f:
 				daemon_pid = int(f.read())
+			logv('Stopping daemon (PID %d)...', daemon_pid)
 			notify(*args)
 			while True:
 				try:
 					os.kill(daemon_pid, 0)
-					break
+					time.sleep(0.1)  # Still running
 				except ProcessLookupError:
-					time.sleep(0.1)
+					break
 			log('Daemon stopped.')
 
 		case 'reload':

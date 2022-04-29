@@ -63,10 +63,10 @@ def mod_i3lock(*args):
 				while True:
 					try:
 						os.kill(s.inner_pid, 0)
-						break
-					except ProcessLookupError:
 						logv('mod_i3lock: Waiting...')
 						time.sleep(0.1)
+					except ProcessLookupError:
+						break
 
 				s.inner_pid = None
 				logv('mod_i3lock: Done.')
