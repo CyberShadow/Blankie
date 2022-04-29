@@ -11,6 +11,8 @@ def mod_upower(*args):
 		# Popen of the managed upower process.
 		upower = None,
 
+		# reader thread
+		reader = None
 	))
 
 	# Implementation:
@@ -21,14 +23,20 @@ def mod_upower(*args):
 				s.upower = subprocess.Popen(
 					['upower', '--monitor'],
 					stdout=subprocess.PIPE)
-				threading.Thread(target=upower_reader, args=(module_id, s.upower.stdout)).start()
+				s.reader = threading.Thread(target=upower_reader, args=(module_id, s.upower.stdout))
+				s.reader.start()
 				logv('mod_upower: Started upower (PID %d).', s.upower.pid)
 		case 'stop':
 			if s.upower is not None:
 				logv('mod_upower: Killing upower (PID %d)...', s.upower.pid)
+
 				s.upower.terminate()
 				s.upower.wait()
 				s.upower = None
+
+				s.reader.join()
+				s.reader = None
+
 				logv('mod_upower: Done.')
 		case '_ping':
 			logv('mod_upower: Got a line from upower, reconfiguring.')

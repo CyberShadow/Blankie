@@ -222,6 +222,9 @@ def mod_xss(*args):
 		# xss Popen object
 		xss = None,
 
+		# reader thread
+		reader = None,
+
 	))
 
 	# Implementation:
@@ -243,7 +246,8 @@ def mod_xss(*args):
 					raise Exception('mod_xss: Failed to start xss.')
 
 				# Start event reader task
-				threading.Thread(target=xss_reader, args=(module_id, s.xss.stdout)).start()
+				s.reader = threading.Thread(target=xss_reader, args=(module_id, s.xss.stdout))
+				s.reader.start()
 
 				logv('mod_xss: Started xss (PID %d).', s.xss.pid)
 
@@ -254,6 +258,10 @@ def mod_xss(*args):
 				s.xss.terminate()
 				s.xss.communicate()
 				s.xss = None
+
+				s.reader.join()
+				s.reader = None
+
 				logv('mod_xss: Done.')
 
 		case '_event':

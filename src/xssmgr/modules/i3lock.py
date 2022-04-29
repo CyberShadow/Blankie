@@ -16,10 +16,12 @@ def mod_i3lock(*args):
 	# Private state:
 	s = global_state.setdefault(module_id, types.SimpleNamespace(
 
-	    # PID of the forked i3lock process.
-	    inner_pid = None,
+		# PID of the forked i3lock process.
+		inner_pid = None,
 
-    ))
+		# reader thread
+		reader = None,
+	))
 
 	# Implementation:
 
@@ -51,15 +53,16 @@ def mod_i3lock(*args):
 
 				# Create a thread waiting for EOF from the pipe, to know when i3lock exits.
 				# (We use this method to avoid polling with e.g. `kill -0`.)
-				threading.Thread(target=i3lock_reader, args=(module_id, outer.stdout, s.inner_pid,)).start()
+				s.reader = threading.Thread(target=i3lock_reader, args=(module_id, outer.stdout, s.inner_pid,))
+				s.reader.start()
 
 				logv('mod_i3lock: Started i3lock (PID %d).', s.inner_pid)
 
 		case 'stop':
 			if s.inner_pid is not None:
 				logv('mod_i3lock: Killing i3lock (PID %d)...', s.inner_pid)
-				os.kill(s.inner_pid, signal.SIGTERM)
 
+				os.kill(s.inner_pid, signal.SIGTERM)
 				while True:
 					try:
 						os.kill(s.inner_pid, 0)
@@ -67,8 +70,11 @@ def mod_i3lock(*args):
 						time.sleep(0.1)
 					except ProcessLookupError:
 						break
-
 				s.inner_pid = None
+
+				s.reader.join()
+				s.reader = None
+
 				logv('mod_i3lock: Done.')
 
 		case '_exit':
