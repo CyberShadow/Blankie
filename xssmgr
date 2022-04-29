@@ -26,6 +26,7 @@ Commands:
   start        Start the xssmgr daemon.
   stop         Stop the xssmgr daemon.
   status       Print the current status.
+  reload       Reload the configuration.
   lock         Lock the X session now.
   unlock       Unlock the X session now.
 ''')
