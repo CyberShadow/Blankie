@@ -15,23 +15,6 @@ import time
 import types
 
 # -----------------------------------------------------------------------------
-# Usage
-
-if len(sys.argv) == 1:
-	sys.stderr.write('''
-Usage: xssmgr COMMAND
-
-Commands:
-  start        Start the xssmgr daemon.
-  stop         Stop the xssmgr daemon.
-  status       Print the current status.
-  reload       Reload the configuration.
-  lock         Lock the X session now.
-  unlock       Unlock the X session now.
-''')
-	sys.exit(2)
-
-# -----------------------------------------------------------------------------
 # External globals - made available to the configuration and modules
 
 # Path to the xssmgr script.
@@ -715,6 +698,20 @@ def query(*args):
 
 def main():
 	args = sys.argv[1:]
+
+	if not args:
+		sys.stderr.write('''
+Usage: xssmgr COMMAND
+
+Commands:
+  start        Start the xssmgr daemon.
+  stop         Stop the xssmgr daemon.
+  status       Print the current status.
+  reload       Reload the configuration.
+  lock         Lock the X session now.
+  unlock       Unlock the X session now.
+''')
+		sys.exit(2)
 
 	os.makedirs(run_dir, exist_ok=True)
 	load_config()
