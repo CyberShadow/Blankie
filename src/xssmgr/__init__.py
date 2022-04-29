@@ -166,13 +166,6 @@ def load_config():
 	log('Please check installation or create \'%s\'.', config_files[0])
 
 # -----------------------------------------------------------------------------
-# Initialization
-
-os.makedirs(run_dir, exist_ok=True)
-
-load_config()
-
-# -----------------------------------------------------------------------------
 # Core functionality: run on_start and on_idle modules
 
 def core_selector():
@@ -702,6 +695,9 @@ def query(*args):
 # Entry point
 
 def main(*args):
+	os.makedirs(run_dir, exist_ok=True)
+	load_config()
+
 	match args[0]:
 		case 'start':
 			daemon()
