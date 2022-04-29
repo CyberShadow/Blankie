@@ -44,9 +44,7 @@ def mod_xbacklight(*args):
 		case 'hash':
 			# Don't stop+start this module (thus momentarily resetting
 			# brightness) when e.g. the -time parameter changes.
-			with subprocess.Popen(['sha1sum'], stdin=subprocess.PIPE, stdout=subprocess.PIPE) as p:
-				(module_id, _) = p.communicate(bytes(str(xbacklight_args), 'utf-8'))
-			module_id = module_id.split()[0]
+			module_id = hashlib.sha1(bytes(str(xbacklight_args), 'utf-8')).hexdigest()
 
 		case 'start':
 			if s.xbacklight is None:

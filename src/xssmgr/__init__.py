@@ -4,6 +4,7 @@
 
 import atexit
 import contextlib
+import hashlib
 import os
 import signal
 import stat
@@ -450,9 +451,7 @@ def get_module_id(module_name, *module_args_):
 
 	if module_id == 'dummy_id':
 		# Use default hashing logic
-		with subprocess.Popen(['sha1sum'], stdin=subprocess.PIPE, stdout=subprocess.PIPE) as p:
-			(module_id, _) = p.communicate(bytes(str(module), 'utf-8'))
-		module_id = module_id.split()[0]
+		module_id = hashlib.sha1(bytes(str(module), 'utf-8')).hexdigest()
 
 	modules[module_id] = module
 	return module_id
