@@ -37,18 +37,16 @@ Commands:
 os.environ['XSSMGR'] = sys.argv[0]
 
 # This session's runtime directory.  Modules may put state here.
-os.environ['XSSMGR_RUN_DIR'] = os.getenv(
+run_dir = os.environ.setdefault(
 	'XSSMGR_RUN_DIR',
 	os.getenv(
 		'XDG_RUNTIME_DIR',
 		'/tmp/' + str(os.getuid())
 	) + '/xssmgr-' + os.environ['DISPLAY']
 )
-run_dir = os.environ['XSSMGR_RUN_DIR']
 
 # Daemon's event funnel.
-os.environ['XSSMRG_FIFO'] = os.getenv('XSSMRG_FIFO', run_dir + '/daemon.fifo')
-fifo = os.environ['XSSMRG_FIFO']
+fifo = os.environ.setdefault('XSSMRG_FIFO', run_dir + '/daemon.fifo')
 
 # Log verbosity setting.
 verbose = int(os.getenv('XSSMGR_VERBOSE', '0'))
