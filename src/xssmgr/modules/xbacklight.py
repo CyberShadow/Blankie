@@ -1,10 +1,17 @@
-# External on_idle xssmgr module: xbacklight
+# xssmgr.modules.xbacklight - optional on_idle module
 # Runs and manages an xbacklight process, which fades the screen to
 # black over the configured duration.
 
-def mod_xbacklight(*args):
-	global module_id
+import hashlib
+import subprocess
+import threading
+import types
 
+import xssmgr
+import xssmgr.fifo
+from xssmgr.util import *
+
+def mod_xbacklight(*args):
 	# Parameters:
 
 	# Additional arguments, used for both querying and setting (such as
@@ -18,17 +25,17 @@ def mod_xbacklight(*args):
 
 	# Sort module arguments into the above.
 	i = 0
-	while i < len(module_args):
-		match module_args[i]:
+	while i < len(xssmgr.module_args):
+		match xssmgr.module_args[i]:
 			case '-ctrl' | '-display' | '-perceived':
-				xbacklight_args += module_args[i : i+2]
+				xbacklight_args += xssmgr.module_args[i : i+2]
 				i += 2
 			case _:
-				xbacklight_set_args += [module_args[i]]
+				xbacklight_set_args += [xssmgr.module_args[i]]
 				i += 1
 
 	# Private state:
-	s = global_state.setdefault(module_id, types.SimpleNamespace(
+	s = xssmgr.global_state.setdefault(xssmgr.module_id, types.SimpleNamespace(
 
 		# Popen of any running xbacklight process.
 		xbacklight = None,
@@ -44,7 +51,7 @@ def mod_xbacklight(*args):
 		case 'hash':
 			# Don't stop+start this module (thus momentarily resetting
 			# brightness) when e.g. the -time parameter changes.
-			module_id = hashlib.sha1(bytes(str(xbacklight_args), 'utf-8')).hexdigest()
+			xssmgr.module_id = hashlib.sha1(bytes(str(xbacklight_args), 'utf-8')).hexdigest()
 
 		case 'start':
 			if s.xbacklight is None:
@@ -59,8 +66,8 @@ def mod_xbacklight(*args):
 					# (so we later don't kill an innocent process due to
 					# PID reuse).
 					f.read() # Wait for EOF
-					notify('module', module_id, '_exited')
-				threading.Thread(target=wait_exit, args=(module_id, s.xbacklight.stdout)).start()
+					xssmgr.fifo.notify('module', module_id, '_exited')
+				threading.Thread(target=wait_exit, args=(xssmgr.module_id, s.xbacklight.stdout)).start()
 
 		case 'stop':
 			if s.xbacklight is not None:

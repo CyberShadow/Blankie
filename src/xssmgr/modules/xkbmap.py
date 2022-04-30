@@ -1,15 +1,23 @@
-# External on_lock xssmgr module: xkbmap
+# xssmgr.modules.xkbmap - optional on_lock module
 # Configures the XKB map as requested when activating the lock screen,
 # and restores previous settings when deactivating.
+
+import subprocess
+import types
+
+import xssmgr
+import xssmgr.config
+import xssmgr.fifo
+from xssmgr.util import *
 
 def mod_xkbmap(*args):
 	# Parameters:
 
 	# The keyboard configuration to use when locked.
-	xkbmap_args = module_args
+	xkbmap_args = xssmgr.module_args
 
 	# Private state:
-	s = global_state.setdefault(module_id, types.SimpleNamespace(
+	s = xssmgr.global_state.setdefault(xssmgr.module_id, types.SimpleNamespace(
 
 		# The previous keyboard configuration.
 		xkbmap_state = None,

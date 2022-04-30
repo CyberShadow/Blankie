@@ -1,7 +1,4 @@
-#!/usr/bin/python
-
-# X ScreenSaver manager
-# Entry point
+# xssmgr.__main__ - entry point
 
 from . import main
 

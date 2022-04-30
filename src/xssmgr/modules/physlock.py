@@ -1,6 +1,8 @@
-# External on_lock xssmgr module: physlock
+# xssmgr.modules.physlock - optional on_lock module
 # Disables TTY switching, to prevent switching to another (possibly
 # unlocked) TTY while the lock screen is active.
+
+import subprocess
 
 def mod_physlock(*args):
 	match args[0]:

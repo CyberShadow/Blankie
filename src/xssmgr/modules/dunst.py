@@ -1,6 +1,8 @@
-# External on_lock xssmgr module: dunst
+# xssmgr.modules.dunst - optional on_lock module
 # Pauses dunst notifications, preventing them from being displayed on
 # top of the lock screen.
+
+import subprocess
 
 def mod_dunst(*args):
 	match args[0]:

@@ -40,21 +40,25 @@
 # Here is a very simple configuration, which uses just two modules.
 # It locks the screen after 15 minutes with i3lock.
 
-# def config():
-#     on_idle(15 * 60, 'lock')
-#     on_lock('i3lock')
+# def config(c):
+#     c.on_idle(15 * 60, 'lock')
+#     c.on_lock('i3lock')
 
 # Below is a more elaborate configuration, which is close to the
 # author's personal xssmgr configuration.
 
-import socket
+import os.path
 import pathlib
+import socket
+import subprocess
 
-def config():
+import xssmgr
+
+def config(c):
 	# Let's define some helper variables first.
 	# We want a much shorter delay if the lock screen is already active.
 
-	if not locked:
+	if not xssmgr.locked:
 		# Settings for when the lock screen is not active.
 
 		# We can have different settings for different machines by
@@ -84,9 +88,9 @@ def config():
 
 	# Register our selected modules at their corresponding idle times.
 
-	on_idle(delay - fade, 'xbacklight', '-time', str(fade * 1000), '-fps', '15')
+	c.on_idle(delay - fade, 'xbacklight', '-time', str(fade * 1000), '-fps', '15')
 
-	on_idle(delay, *action)
+	c.on_idle(delay, *action)
 
 	# Register some on-lock modules, to do some more interesting things
 	# when the screen is locked.  These will be started when the lock
@@ -94,26 +98,26 @@ def config():
 
 	# Prevent TTY switching.
 	# No need to worry if you forgot to log out on a TTY before walking away.
-	on_lock('physlock')
+	c.on_lock('physlock')
 
 	# Pause dunst notifications.
 	# Don't want your PMs to pop up on top of the lock screen.
-	on_lock('dunst')
+	c.on_lock('dunst')
 
 	# Stop udiskie.
 	# Don't want to auto-mount any USB sticks while the screen is locked.
-	on_lock('udiskie')
+	c.on_lock('udiskie')
 
 	# # Change the keyboard to US QWERTY before locking the screen.
 	# # Avoid frustration due to your password not working when you were
 	# # actually typing it in Cyrillic.
 	# on_lock xkbmap -layout us
-	on_lock('xkblayout')
+	c.on_lock('xkblayout')
 
 	# Finally, add the lock screen itself.  It should be the last module
 	# to run, to ensure that other security modules run before the lock
 	# screen becomes visible, thus confirming that the machine is secure.
-	on_lock('i3lock', '--show-failed-attempts', '--image', os.path.expanduser('~/data/images/wallpaper/blurred.png'))
+	c.on_lock('i3lock', '--show-failed-attempts', '--image', os.path.expanduser('~/data/images/wallpaper/blurred.png'))
 
 # Custom on_lock xssmgr module: udiskie
 # Stops udiskie, which in turn stops automounting.

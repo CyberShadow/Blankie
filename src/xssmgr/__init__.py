@@ -1,21 +1,13 @@
-# X ScreenSaver manager
+# xssmgr.__init__ - core definitions and logic
 # Receives events and manages X screen saver settings, power,
 # and the screen locker.
 
-import atexit
-import contextlib
 import hashlib
 import os
-import signal
-import stat
-import subprocess
 import sys
-import threading
-import time
-import types
 
 # -----------------------------------------------------------------------------
-# External globals - made available to the configuration and modules
+# External globals - made available to the configuration and external processes
 
 # Path to the xssmgr script.
 os.environ['XSSMGR'] = sys.argv[0]
@@ -28,9 +20,6 @@ run_dir = os.environ.setdefault(
 		'/tmp/' + str(os.getuid())
 	) + '/xssmgr-' + os.environ['DISPLAY']
 )
-
-# Daemon's event funnel.
-fifo = os.environ.setdefault('XSSMRG_FIFO', run_dir + '/daemon.fifo')
 
 # Log verbosity setting.
 verbose = int(os.getenv('XSSMGR_VERBOSE', '0'))
@@ -49,6 +38,9 @@ if is_source_checkout:
 else:
 	lib_dir = '/usr/lib/xssmgr'
 
+# -----------------------------------------------------------------------------
+# Core module machinery
+
 # Map from module instance IDs to module names + parameters.
 modules = {}
 
@@ -58,341 +50,10 @@ module_dirs = []
 # Currently running modules.
 running_modules = []
 
-# Modules registered in the configuration.
-on_start_modules = []
-on_lock_modules = []
-on_idle_modules = []
-
 # Functions to call to build the list of modules which should be
 # running right now.
 # Functions are called in order of this associative array's keys.
 module_selectors = {}
-
-# Whether we are currently idle (according to X / xss).
-# Because xss is affected by X screen-saver inhibitors,
-# this may be 0 even if xprintidle would produce a large number.
-idle = 0
-
-# X server idle time (as provided by xprintidle), in milliseconds,
-# or max_time
-idle_time = 0
-
-# Constant - dummy idle time used for when the system is about to go to sleep
-max_time = float('inf')
-
-# Daemon's PID file.
-pid_file = run_dir + '/daemon.pid'
-
-# Global dynamic state.
-# Artifact of literal bash -> Python translation, will be deleted.
-global_state = {}
-
-# -----------------------------------------------------------------------------
-# Communication globals, used to store additional values passed between functions.
-# These should be refactored away.
-
-# List built by module selectors to choose which modules should be
-# running at the moment.
-wanted_modules = None
-
-# Instance ID of the currently invoked module.
-module_id = None
-
-# Arguments of the currently invoked module.
-module_args = None
-
-# -----------------------------------------------------------------------------
-# Utility functions
-
-def log(fmt, *args):
-	sys.stderr.write('xssmgr: ' + (fmt % args) + '\n')
-	sys.stderr.flush()
-
-def logv(fmt, *args):
-	if verbose:
-		log(fmt, *args)
-
-# -----------------------------------------------------------------------------
-# Configuration
-
-# Called from the user's configuration to register an on-start module.
-def on_start(module, *parameters):
-	on_start_modules.append(get_module_id(module, *parameters))
-
-# Called from the user's configuration to register an on-lock module.
-def on_lock(module, *parameters):
-	on_lock_modules.append(get_module_id(module, *parameters))
-
-# Called from the user's configuration to register an on-idle module.
-def on_idle(idle_seconds, module, *parameters):
-	on_idle_modules.append((idle_seconds, get_module_id(module, *parameters)))
-
-# (Re-)Load the configuration file.
-def load_config():
-	config_dirs = os.getenv('XDG_CONFIG_DIRS', '/etc').split(':')
-	config_dirs = [os.getenv('XDG_CONFIG_HOME', os.environ['HOME'] + '/.config')] + config_dirs
-	config_files = [d + '/xssmgr/config.py' for d in config_dirs]
-
-	global module_dirs
-	module_dirs = (
-		[d + '/xssmgr/modules' for d in config_dirs] +
-		[os.path.dirname(__file__) + '/modules']
-	)
-
-	for config_file in config_files:
-		if os.path.exists(config_file):
-			logv('Loading configuration from \'%s\'.', config_file)
-			with open(config_file, 'rb') as f:
-				exec(f.read(), globals())
-			return
-
-	log('WARNING: No configuration file found.')
-	log('Please check installation or create \'%s\'.', config_files[0])
-
-# -----------------------------------------------------------------------------
-# Core functionality: run on_start and on_idle modules
-
-def core_selector():
-	wanted_modules.extend([
-		get_module_id('xset'),
-		get_module_id('xss'),
-	])
-
-	wanted_modules.extend(on_start_modules)
-
-	for (timeout, module) in on_idle_modules:
-		if idle_time >= timeout * 1000:
-			wanted_modules.append(module)
-module_selectors['10-core'] = core_selector
-
-# -----------------------------------------------------------------------------
-# Built-in on_start module: xset
-# Manages the X server's XScreenSaver extension settings.  Used to
-# configure when xss receives notifications about the system becoming
-# idle.
-
-def mod_xset(*args):
-	match args[0]:
-		case 'start':
-			# We configure the X screen saver to "activate" at the
-			# requested idle time of the first idle hook.  Beyond
-			# that, the timer module will activate and sleep until the
-			# next idle hook.
-			min_timeout = max_time
-			max_timeout = 0
-			for (timeout, _module) in on_idle_modules:
-				if timeout <= 0:
-					log('mod_xset: Invalid idle time: %d, ignoring', timeout)
-					continue
-				min_timeout = min(min_timeout, timeout)
-				max_timeout = max(max_timeout, timeout)
-			logv('mod_xset: Configuring X screensaver for idle hooks in the %d .. %d range.', min_timeout, max_timeout)
-			if max_timeout > 0:
-				subprocess.check_call(['xset', 's', str(min_timeout), '0'])
-			else:
-				subprocess.check_call(['xset', 's', 'off'])
-
-		case 'stop':
-			# Disable X screensaver.
-			subprocess.check_call(['xset', 's', 'off'])
-
-# -----------------------------------------------------------------------------
-# Built-in on_start module: xss
-# Manages an instance of a helper program, which receives screen saver
-# events from the X server.  Used to know when the system becomes or
-# stops being idle.
-
-def mod_xss(*args):
-	# Private state:
-	s = global_state.setdefault(module_id, types.SimpleNamespace(
-
-		# xss Popen object
-		xss = None,
-
-		# reader thread
-		reader = None,
-
-	))
-
-	# Implementation:
-
-	match args[0]:
-		case 'start':
-			# Start xss
-			if s.xss is None:
-				s.xss = subprocess.Popen(
-					[lib_dir + '/xss'],
-					stdout = subprocess.PIPE
-				)
-
-				if s.xss.stdout.readline() != b'init\n':
-					logv('mod_xss: xss initialization failed.')
-					s.xss.terminate()
-					s.xss.communicate()
-					s.xss = None
-					raise Exception('mod_xss: Failed to start xss.')
-
-				# Start event reader task
-				s.reader = threading.Thread(target=xss_reader, args=(module_id, s.xss.stdout))
-				s.reader.start()
-
-				logv('mod_xss: Started xss (PID %d).', s.xss.pid)
-
-		case 'stop':
-			# Stop xss
-			if s.xss is not None:
-				logv('mod_xss: Killing xss (PID %d)...', s.xss.pid)
-				s.xss.terminate()
-				s.xss.communicate()
-				s.xss = None
-
-				s.reader.join()
-				s.reader = None
-
-				logv('mod_xss: Done.')
-
-		case '_event':
-			logv('mod_xss: Got line from xss: %s', str(args[1:]))
-			match args[1]:
-				case b'notify':
-					(state, _kind, _forced) = args[2:5]
-					global idle, idle_time
-					if state == b'off':
-						idle = 0
-					else:
-						idle = 1
-					idle_time = int(subprocess.check_output(['xprintidle']))
-					update_modules()
-
-				case _:
-					log('mod_xss: Unknown line received from xss: %s', str(args[1:]))
-
-
-def xss_reader(module_id, f):
-	while line := f.readline():
-		notify('module', module_id, '_event', *line.split())
-	logv('mod_xss: xss exited (EOF).')
-
-# -----------------------------------------------------------------------------
-# Built-in special module: lock
-# Activates on_lock modules.
-
-# Lock screen active right now?
-locked = False
-
-# React to locking/unlocking by starting/stopping on_lock modules.
-def lock_selector():
-	if locked:
-		# Ensure lock module isn't stopped upon locking
-		wanted_modules.append(get_module_id('lock'))
-		wanted_modules.extend(on_lock_modules)
-module_selectors['50-lock'] = lock_selector
-
-# Additionally define a lock module, which can be added to an on_idle
-# hook to lock the screen when idle.
-def mod_lock(*args):
-	match args[0]:
-		case 'start':
-			logv('mod_lock: Locking (because the lock module is being enabled).')
-			lock()
-
-		case 'stop':
-			logv('mod_lock: Unlocking (because the lock module is being disabled).')
-			unlock()
-
-
-# Note: the lock state can be affected by multiple sources - not just
-# the lock module, but also the explicit lock/unlock actions.  This
-# should work "as expected", so the lock module only changes the lock
-# state on edge (its own start and stop), as opposed to enforcing it
-# for the entire duration it's running.
-
-def lock():
-	global locked
-	locked = True
-	reconfigure()
-
-# Pipes to processes waiting for a notification for when the lock screen exits.
-unlock_notification_fds = []
-
-def unlock():
-	global locked, idle_time
-	locked = False
-	idle_time = 0  # Ensure we don't try to immediately relock / go to sleep
-
-	# Notify of unlocks.
-	global unlock_notification_fds
-	for locker_reply_fd in unlock_notification_fds:
-		locker_reply_fd.write('Unlocked\n')
-		locker_reply_fd.close()
-	unlock_notification_fds = []
-
-	reconfigure()
-
-# -----------------------------------------------------------------------------
-# Built-in special module: timer
-# When active, sleeps until the next scheduled on_idle hook, and prods
-# the main event loop to ensure on_idle hooks are activated
-# accordingly.
-
-def mod_timer(*args):
-	# Private state:
-	s = global_state.setdefault(module_id, types.SimpleNamespace(
-
-		# Timer instance, which waits until the next event
-		timer = None,
-
-	))
-
-	# Implementation:
-
-	match args[0]:
-		case 'start':
-			timer_schedule(s)
-		case 'stop':
-			timer_cancel(s)
-		case '_wait_done':
-			logv('mod_timer: Timer fired.')
-			s.timer = None  # It exited cleanly, no need to cancel it.
-			global idle_time
-			idle_time = int(subprocess.check_output(['xprintidle']))
-			update_modules()
-
-			timer_schedule(s)
-
-# React to xss telling us the system became or stopped being idle.
-def timer_selector():
-	if idle:
-		wanted_modules.append(get_module_id('timer'))
-module_selectors['50-timer'] = timer_selector
-
-def timer_cancel(s):
-	if s.timer is not None:
-		logv('mod_timer: Canceling old timer wait task.')
-		s.timer.cancel()
-		s.timer = None
-
-def timer_schedule(s):
-	timer_cancel(s)
-
-	next_time = max_time
-	for (timeout, _module) in on_idle_modules:
-		timeout_ms = timeout * 1000
-		if idle_time < timeout_ms < next_time:
-			next_time = timeout_ms
-
-	if next_time < max_time:
-		to_sleep = next_time - idle_time + 1
-		s.timer = threading.Timer(
-			interval=to_sleep / 1000,
-			function=notify,
-			args=('module', module_id, '_wait_done')
-		)
-		s.timer.start()
-		logv('mod_timer: Started new timer for %d milliseconds.', to_sleep)
-
-# -----------------------------------------------------------------------------
-# Daemon implementation
 
 def load_module(module_name):
 	for module_dir in module_dirs:
@@ -510,191 +171,108 @@ def update_modules():
 	# 2. Start/stop modules accordingly.
 	start_stop_modules()
 
-# Re-evaluate the configuration and update our state to match.
-def reconfigure():
-	logv('Reconfiguring.')
+# -----------------------------------------------------------------------------
+# Current state
+# These encode the current state of the system, which is used to
+# select which modules should be running.
 
-	# Reset settings before (re-)loading configuration file.
-	global on_start_modules, on_lock_modules, on_idle_modules
-	on_start_modules = []
-	on_lock_modules = []
-	on_idle_modules = []
+# Whether we are currently idle (according to X / xss).
+# Because xss is affected by X screen-saver inhibitors,
+# this may be 0 even if xprintidle would produce a large number.
+idle = 0
 
-	# Evaluate the user-defined configuration function.
-	config()
+# X server idle time (as provided by xprintidle), in milliseconds,
+# or max_time
+idle_time = 0
 
-	update_modules()
+# Lock screen active right now?
+locked = False
 
-# Reload the configuration file and reconfigure.
-def sighup():
-	log('Got SIGHUP - asynchronously requesting reload.')
-	# Make sure that the logic runs from the main loop, and not an
-	# arbitrary place in the script.
-	threading.Thread(target=notify, args=('reload')).start()
-
-
-# Handle one daemon command.
-def daemon_command(*args):
-	match args[0]:
-		case 'ping':
-			with open(args[1], 'wb') as f:
-				f.write(b'pong\n')
-		case 'status':
-			with open(args[1], 'w', encoding='utf-8') as f:
-				f.write('Currently locked: %d\n' % (locked))
-				f.write('Running modules:\n')
-				f.write(''.join('- %s\n' % m for m in running_modules))
-				f.write('Registered on_start modules:\n')
-				f.write(''.join('- %s\n' % m for m in on_start_modules))
-				f.write('Registered on_idle modules:\n')
-				f.write(''.join('- %d %s\n' % m for m in on_idle_modules))
-				f.write('Registered on_lock modules:\n')
-				f.write(''.join('- %s\n' % m for m in on_lock_modules))
-		case 'stop':
-			log('Daemon is stopping...')
-			# Python waits for daemon threads to exit before calling
-			# atexit handlers. Because those threads are stopped in
-			# response to cleanup performed in our atexit handler,
-			# this deadlocks us.  Run the shutdown function manually
-			# to avoid this.
-			daemon_shutdown()
-			atexit.unregister(daemon_shutdown)
-
-			time.sleep(1)
-			logv('Daemon is exiting.')
-			sys.exit(0)
-		case 'reload':
-			log('Reloading configuration.')
-			load_config()
-			reconfigure()
-		case 'module': # Synchronously execute module subcommand, in the daemon process
-			module_command(*args[1:])
-		case 'lock':
-			log('Locking the screen due to user request.')
-			if not locked:
-				lock()
-				with open(args[1], 'wb') as f: f.write('Locked.\n')
-			else:
-				with open(args[1], 'wb') as f: f.write('Already locked.\n')
-		case 'unlock':
-			log('Unlocking the screen due to user request.')
-			if locked:
-				unlock()
-				with open(args[1], 'wb') as f: f.write('Unlocked.\n')
-			else:
-				with open(args[1], 'wb') as f: f.write('Already unlocked.\n')
-		case _:
-			log('Ignoring unknown daemon command: %s', str(args))
-
-def shutdown_selector():
-	wanted_modules.clear()
-
-# Exit trap.
-def daemon_shutdown():
-	logv('Shutting down.')
-
-	# Stop all modules.
-	module_selectors['95-shutdown'] = shutdown_selector
-	update_modules()
-
-	# Delete FIFO. We are no longer accepting commands.
-	os.remove(fifo)
-
-	# Delete PID file. We are exiting.
-	with contextlib.suppress(FileNotFoundError):
-		os.remove(pid_file)
-
-	logv('Shutdown complete.')
-
-# Daemon main event loop.
-def daemon_loop():
-	# Reload the configuration when receiving a SIGHUP.
-	signal.signal(signal.SIGHUP, sighup)
-
-	# Create PID file.
-	with open(pid_file, 'w') as f:
-		f.write(str(os.getpid()))
-
-	# Start on-boot modules.
-	reconfigure()
-
-	while True:
-		with open(fifo, 'rb') as f:
-			command_str = f.readline().rstrip(b'\n')
-		command = eval(command_str)  # TODO
-
-		logv('Got command: %s', str(command))
-		daemon_command(*command)
-
-# Daemon entry point.
-def daemon():
-	# Check if xssmgr is already running.
-	# (TODO - not translating old implementation from bash to Python)
-
-	# Remove stale FIFO
-	with contextlib.suppress(FileNotFoundError):
-		os.remove(fifo)
-		logv('Removed stale FIFO: %s', fifo)
-
-	# Ensure a clean shut-down in any eventuality.
-	atexit.register(daemon_shutdown)
-
-	# Create the event funnel FIFO
-	os.mkfifo(fifo, mode=0o600)
-
-	# Queue up a command for the daemon. If it finishes before the
-	# daemon process, it has started successfully.
-	ping_pid = os.fork()
-	if ping_pid == 0:
-		atexit.unregister(daemon_shutdown)
-		sys.exit(1 - int(query('ping') == b'pong\n'))
-
-	# Now, fork away the daemon main loop.
-	daemon_pid = os.fork()
-	if daemon_pid == 0:
-		daemon_loop()
-		assert False  # daemon_loop() does not return
-
-	# Clear our exit trap, as it should now run in the main loop subshell.
-	atexit.unregister(daemon_shutdown)
-
-	# Wait for the daemon to finish starting up.
-	(first_pid, status, _) = os.wait3(0)
-	if first_pid == ping_pid and os.waitstatus_to_exitcode(status) == 0:
-		log('Daemon started on %s (PID %d).',
-			os.environ['DISPLAY'],
-			daemon_pid)
-	else:
-		log('Daemon start-up failed.')
-		sys.exit(1)
+# Constant - dummy idle time used for when the system is about to go to sleep
+# TODO: use math.inf
+max_time = float('inf')
 
 # -----------------------------------------------------------------------------
-# Daemon communication
+# Communication globals, used to store additional values passed between functions.
+# These should be refactored away.
 
-# Send a line to the daemon event loop
-def notify(*args):
-	message = bytes(str(args) + '\n', 'utf-8')
-	# Send the message in one write.
-	with open(fifo, 'wb') as f:
-		f.write(message)
+# List built by module selectors to choose which modules should be
+# running at the moment.
+# TODO: refactor out
+wanted_modules = None
 
-	# We do this check after writing to avoid a TOCTOU.
-	if not stat.S_ISFIFO(os.stat(fifo).st_mode):
-		raise Exception('\'%s\' is not a FIFO - daemon not running?' % (fifo))
+# Instance ID of the currently invoked module.
+# TODO: refactor out
+module_id = None
 
-# Send a line to the daemon, and wait for a reply
-def query(*args):
-	qfifo = run_dir + '/query.' + str(os.getpid()) + '.fifo'  # Answer will be sent here
+# Arguments of the currently invoked module.
+# TODO: refactor out
+module_args = None
 
-	os.mkfifo(qfifo, mode=0o600)
-	notify(*args, qfifo)
-	with open(qfifo, 'rb') as f:
-		result = f.read()
-	os.remove(qfifo)
-	return result
+# Global dynamic state.
+# Artifact of literal bash -> Python translation, will be deleted.
+global_state = {}
+
+# -----------------------------------------------------------------------------
+# Core functionality: run core modules
+
+def core_selector():
+	wanted_modules.extend([
+		# Receives commands / events from other processes.
+		get_module_id('fifo'),
+
+		# Configures the X screensaver, so that we receive idle /
+		# unidle events.
+		get_module_id('xset'),
+
+		# Receives idle / unidle events.
+		get_module_id('xss'),
+	])
+
+	if idle:
+		# Wakes us up when it's time to run the next on_idle hook(s).
+		wanted_modules.append(get_module_id('timer'))
+
+module_selectors['10-core'] = core_selector
+
+# -----------------------------------------------------------------------------
+# Locking
+
+# Note: the lock state can be affected by multiple sources - not just
+# the lock module, but also the explicit lock/unlock actions.  This
+# should work "as expected", so the lock module only changes the lock
+# state on edge (its own start and stop), as opposed to enforcing it
+# for the entire duration it's running.
+
+def lock():
+	global locked
+	locked = True
+	xssmgr.config.reconfigure()
+
+# Pipes to processes waiting for a notification for when the lock screen exits.
+unlock_notification_fds = []
+
+def unlock():
+	global locked, idle_time
+	locked = False
+	idle_time = 0  # Ensure we don't try to immediately relock / go to sleep
+
+	# Notify of unlocks.
+	global unlock_notification_fds
+	for locker_reply_fd in unlock_notification_fds:
+		locker_reply_fd.write('Unlocked\n')
+		locker_reply_fd.close()
+	unlock_notification_fds = []
+
+	xssmgr.config.reconfigure()
 
 # -----------------------------------------------------------------------------
 # Entry point
+
+import xssmgr.config
+import xssmgr.daemon
+import xssmgr.fifo
+from xssmgr.util import *
 
 def main():
 	args = sys.argv[1:]
@@ -714,34 +292,20 @@ Commands:
 		sys.exit(2)
 
 	os.makedirs(run_dir, exist_ok=True)
-	load_config()
+	xssmgr.config.load()
 
 	match args[0]:
 		case 'start':
-			daemon()
+			xssmgr.daemon.start()
 
 		case 'stop':
-			if not os.path.exists(pid_file):
-				log('PID file \'%s\' does not exist - daemon not running?', pid_file)
-				sys.exit(2)
-
-			with open(pid_file, 'rb') as f:
-				daemon_pid = int(f.read())
-			logv('Stopping daemon (PID %d)...', daemon_pid)
-			notify(*args)
-			while True:
-				try:
-					os.kill(daemon_pid, 0)
-					time.sleep(0.1)  # Still running
-				except ProcessLookupError:
-					break
-			log('Daemon stopped.')
+			xssmgr.daemon.stop_remote()
 
 		case 'reload':
-			notify(*args)
+			xssmgr.fifo.notify(*args)
 
 		case 'status' | 'lock' | 'unlock':
-			sys.stdout.write(query(*args))
+			sys.stdout.write(xssmgr.fifo.query(*args))
 
 		# Internal commands:
 		case 'module':
