@@ -55,7 +55,7 @@ def mod_xbacklight(*args):
 
 		case 'start':
 			if s.xbacklight is None:
-				s.brightness = subprocess.check_output(['xbacklight', *xbacklight_args, '-getf'])
+				s.brightness = subprocess.check_output(['xbacklight', *xbacklight_args, '-getf']).rstrip(b'\n')
 				logv('mod_xbacklight: Got original brightness (%s).', s.brightness)
 				args = ['xbacklight', *xbacklight_args, '-set', '0', *xbacklight_set_args]
 				logv('mod_xbacklight: Running: %s', str(args))
