@@ -40,7 +40,7 @@ _event_loop = EventLoop()
 call = _event_loop.call
 
 # Reload the configuration file and reconfigure.
-def sighup():
+def sighup(_signal, _frame):
 	log('Got SIGHUP - asynchronously requesting reload.')
 	# Make sure that the logic runs from the main loop, and not an
 	# arbitrary place in the script.
