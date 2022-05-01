@@ -15,7 +15,7 @@ from xssmgr.util import *
 # Daemon's PID file.
 pid_file = xssmgr.run_dir + '/daemon.pid'
 
-class Daemon:
+class EventLoop:
 	queue = None
 
 	stopping = False
@@ -36,8 +36,8 @@ class Daemon:
 			logv('Calling %s with %s / %s', func, args, kwargs)
 			func(*args, **kwargs)
 
-_daemon = Daemon()
-call = _daemon.call
+_event_loop = EventLoop()
+call = _event_loop.call
 
 # Reload the configuration file and reconfigure.
 def sighup():
@@ -98,7 +98,7 @@ def start():
 		ready_w.close()
 
 		# Run the event loop.
-		_daemon.run()
+		_event_loop.run()
 
 		# Event loop exited gracefully.
 		logv('Daemon is exiting.')
@@ -130,7 +130,7 @@ def stop():
 
 	# Ask the daemon to stop, but continue pumping any extant events,
 	# to allow worker threads to exit cleanly.
-	_daemon.stopping = True
+	_event_loop.stopping = True
 
 
 def stop_remote():
