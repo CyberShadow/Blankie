@@ -9,7 +9,7 @@ import time
 import types
 
 import xssmgr
-import xssmgr.fifo
+import xssmgr.daemon
 from xssmgr.util import *
 
 def mod_i3lock(*args):
@@ -106,4 +106,4 @@ def i3lock_reader(module_id, f, pid):
 	f.read()
 	# If we're here, f.read() reached EOF, which means that all write ends
 	# of the pipe were closed, which means that i3lock exited.
-	xssmgr.fifo.notify('module', module_id, '_exit', pid)
+	xssmgr.daemon.call(xssmgr.module_command, module_id, '_exit', pid)

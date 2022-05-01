@@ -10,7 +10,7 @@ import types
 
 import xssmgr
 import xssmgr.config
-import xssmgr.fifo
+import xssmgr.daemon
 from xssmgr.util import *
 
 def mod_upower(*args):
@@ -53,4 +53,4 @@ def mod_upower(*args):
 
 def upower_reader(module_id, f):
 	while f.readline():
-		xssmgr.fifo.notify('module', module_id, '_ping')
+		xssmgr.daemon.call(xssmgr.module_command, module_id, '_ping')

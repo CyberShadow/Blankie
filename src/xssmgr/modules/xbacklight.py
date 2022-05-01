@@ -8,7 +8,7 @@ import threading
 import types
 
 import xssmgr
-import xssmgr.fifo
+import xssmgr.daemon
 from xssmgr.util import *
 
 def mod_xbacklight(*args):
@@ -66,7 +66,7 @@ def mod_xbacklight(*args):
 					# (so we later don't kill an innocent process due to
 					# PID reuse).
 					f.read() # Wait for EOF
-					xssmgr.fifo.notify('module', module_id, '_exited')
+					xssmgr.daemon.call(xssmgr.module_command, module_id, '_exited')
 				threading.Thread(target=wait_exit, args=(xssmgr.module_id, s.xbacklight.stdout)).start()
 
 		case 'stop':

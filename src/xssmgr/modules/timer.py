@@ -9,7 +9,7 @@ import types
 
 import xssmgr
 import xssmgr.config
-import xssmgr.fifo
+import xssmgr.daemon
 from xssmgr.util import *
 
 def mod_timer(*args):
@@ -55,8 +55,8 @@ def timer_schedule(s):
 		to_sleep = next_time - xssmgr.idle_time + 1
 		s.timer = threading.Timer(
 			interval=to_sleep / 1000,
-			function=xssmgr.fifo.notify,
-			args=('module', xssmgr.module_id, '_wait_done')
+			function=xssmgr.daemon.call,
+			args=(xssmgr.module_command, xssmgr.module_id, '_wait_done')
 		)
 		s.timer.start()
 		logv('mod_timer: Started new timer for %d milliseconds.', to_sleep)

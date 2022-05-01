@@ -8,6 +8,7 @@ import threading
 import types
 
 import xssmgr
+import xssmgr.daemon
 from xssmgr.util import *
 
 def mod_xss(*args):
@@ -77,5 +78,5 @@ def mod_xss(*args):
 
 def xss_reader(module_id, f):
 	while line := f.readline():
-		xssmgr.fifo.notify('module', module_id, '_event', *line.split())
+		xssmgr.daemon.call(xssmgr.module_command, module_id, '_event', *line.split())
 	logv('mod_xss: xss exited (EOF).')
