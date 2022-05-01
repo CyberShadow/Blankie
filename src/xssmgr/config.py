@@ -1,14 +1,13 @@
 # xssmgr.config - loads, evaluates, and manages the user's configuration
 
+import importlib
 import os
 
 import xssmgr
 from xssmgr.util import *
 
-# User-defined config function.
-# Will be defined when evaluating the user configuration.
-def config(c):
-	raise Exception('config() function not defined')
+# The user config module.
+module = None
 
 class Configurator:
 	def __init__(self):
@@ -49,6 +48,8 @@ xssmgr.module_selectors['20-config'] = configurator.selector
 
 # (Re-)Load the configuration file.
 def load():
+	global module
+
 	config_dirs = os.getenv('XDG_CONFIG_DIRS', '/etc').split(':')
 	config_dirs = [os.getenv('XDG_CONFIG_HOME', os.environ['HOME'] + '/.config')] + config_dirs
 	config_files = [d + '/xssmgr/config.py' for d in config_dirs]
@@ -61,12 +62,17 @@ def load():
 	for config_file in config_files:
 		if os.path.exists(config_file):
 			logv('Loading configuration from \'%s\'.', config_file)
-			# TODO: import and reload as Python module.
-			with open(config_file, 'rb') as f:
-				exec(f.read(), globals())
+
+			# https://docs.python.org/3/library/importlib.html#importing-a-source-file-directly
+			module_name = 'xssmgr_user_config'
+			spec = importlib.util.spec_from_file_location(module_name, config_file)
+			module = importlib.util.module_from_spec(spec)
+			sys.modules[module_name] = module
+			spec.loader.exec_module(module)
+
 			# TODO (hack): put xssmgr module declarations from the
 			# user configuration in the main xssmgr module
-			for name, value in globals().items():
+			for name, value in vars(module).items():
 				if name.startswith('mod_'):
 					vars(xssmgr)[name] = value
 			return
@@ -82,7 +88,7 @@ def reconfigure():
 	configurator.reset()
 
 	# Evaluate the user-defined configuration function.
-	config(configurator)
+	module.config(configurator)
 
 	# Update our state to match.
 	xssmgr.update_modules()
