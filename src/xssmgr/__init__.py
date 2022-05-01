@@ -2,7 +2,6 @@
 # Receives events and manages X screen saver settings, power,
 # and the screen locker.
 
-import hashlib
 import importlib
 import os
 import sys
@@ -42,9 +41,6 @@ else:
 # -----------------------------------------------------------------------------
 # Core module machinery
 
-# Map from module instance IDs to module names + parameters.
-modules = {}
-
 # Module search path.  Populated in load_config.
 module_dirs = []
 
@@ -82,55 +78,24 @@ def load_module(module_name):
 		str(module_dirs),
 	))
 
-# By default, a module instance is identified by the module name + its
-# parameters.  However, some modules require custom identification
-# logic, when some of their parameters should be allowed to change
-# without xssmgr restarting the module.
-# This function registers the module instance (saving its full
-# parameters) and outputs its ID in the homonym variable, running any
-# custom logic if present.
-def get_module_id(module_name, *module_args_):
+# A module instance is identified by its spec, which a tuple
+# consisting of the module name and its parameters.
+def module_command(module_spec_, *arguments):
+	global module_spec
+	module_spec = module_spec_
+
+	module_name = module_spec[0]
+	# Modules can read and parse their parameters from this variable.
 	global module_args
-	module_args = module_args_
+	module_args = module_spec[1:]
 
 	module_func = 'mod_' + module_name
 	if module_func not in globals():
 		logv('Auto-loading module \'%s\'', module_name)
 		load_module(module_name)
 
-	module = (module_name, *module_args)
-
-	# Non-local
-	global module_id
-	module_id = 'dummy_id'
-
-	globals()[module_func]('hash')
-
-	if module_id == 'dummy_id':
-		# Use default hashing logic
-		module_id = hashlib.sha1(bytes(str(module), 'utf-8')).hexdigest()
-
-	modules[module_id] = module
-	return module_id
-
-# A module instance is identified by its ID, as generated and saved in
-# module_id.
-def module_command(module_id_, *arguments):
-	global module_id
-	module_id = module_id_
-
-	module_arr = modules[module_id]
-
-	module_name = module_arr[0]
-	# Modules can read and parse their parameters from this variable.
-	global module_args
-	module_args = module_arr[1:]
-
-	module_func = 'mod_' + module_name
-	# At this point, the function is expected to have already been
-	# loaded in module_id.
 	# logv('Calling %s with %s', module_func, arguments)
-	globals()[module_func](*arguments)
+	return globals()[module_func](*arguments)
 
 # Start or stop modules, synchronizing running_modules
 # against wanted_modules.
@@ -143,23 +108,36 @@ def start_stop_modules():
 	# operation at a time, and recursing to restart the loop until
 	# there is no work left to be done.
 
-	# 1. Stop modules which we no longer want to be running.
+	# 1. Reconfigure modules which can be reconfigured.
+	for wanted_module in wanted_modules:
+		if wanted_module not in running_modules:
+			for i, running_module in enumerate(running_modules):
+				if wanted_module[0] == running_module[0] and \
+				   running_module not in wanted_modules:
+					result = module_command(running_module, 'reconfigure', *wanted_module[1:])
+					if result:
+						running_modules[i] = wanted_module
+						logv('Reconfigured module %s from %s to %s.',
+							 wanted_module[0], running_module[1:], wanted_module[1:])
+						return start_stop_modules()  # Recurse
+
+	# 2. Stop modules which we no longer want to be running.
 	# Do this in reverse order of starting them.
 	for i, running_module in reversed(list(enumerate(running_modules))):
 		if running_module not in wanted_modules:
 			del running_modules[i]
-			logv('Stopping module %s', str(modules[running_module]))
+			logv('Stopping module %s', str(running_module))
 			module_command(running_module, 'stop')
-			logv('Stopped module %s', str(modules[running_module]))
+			logv('Stopped module %s', str(running_module))
 			return start_stop_modules()  # Recurse
 
-	# 2. Start modules which we now want to be running.
+	# 3. Start modules which we now want to be running.
 	for wanted_module in wanted_modules:
 		if wanted_module not in running_modules:
 			running_modules.append(wanted_module)
-			logv('Starting module: %s', str(modules[wanted_module]))
+			logv('Starting module: %s', str(wanted_module))
 			module_command(wanted_module, 'start')
-			logv('Started module: %s', str(modules[wanted_module]))
+			logv('Started module: %s', str(wanted_module))
 			return start_stop_modules()  # Recurse
 
 	# If we reached this point, there is no more work to do.
@@ -214,9 +192,9 @@ max_time = float('inf')
 # TODO: refactor out
 wanted_modules = None
 
-# Instance ID of the currently invoked module.
+# Module spec (name and parameters) of the currently invoked module.
 # TODO: refactor out
-module_id = None
+module_spec = None
 
 # Arguments of the currently invoked module.
 # TODO: refactor out
@@ -232,19 +210,22 @@ global_state = {}
 def core_selector():
 	wanted_modules.extend([
 		# Receives commands / events from other processes.
-		get_module_id('fifo'),
+		('fifo', ),
 
 		# Configures the X screensaver, so that we receive idle /
 		# unidle events.
-		get_module_id('xset'),
+		# TODO: extract idle schedule from configuration and pass as parameters
+		# TODO: implement reconfigure command to avoid an "xset s off"
+		('xset', ),
 
 		# Receives idle / unidle events.
-		get_module_id('xss'),
+		('xss', ),
 	])
 
 	if idle:
 		# Wakes us up when it's time to run the next on_idle hook(s).
-		wanted_modules.append(get_module_id('timer'))
+		# TODO: extract idle schedule from configuration and pass as parameters
+		wanted_modules.append(('timer', ))
 
 module_selectors['10-core'] = core_selector
 
@@ -324,10 +305,10 @@ Commands:
 		case 'module':
 			# Synchronously instantiate a module and execute a module
 			# subcommand, outside the daemon process.
-			module = args[1]
-			module_arr = eval(module)  # TODO
+			module_spec_str = args[1]
+			module_spec = eval(module_spec_str)  # TODO
 
-			module_command(get_module_id(*module_arr), args[2:])
+			module_command(module_spec, args[2:])
 
 		case _:
 			log('Unknown command: %s', str(args))

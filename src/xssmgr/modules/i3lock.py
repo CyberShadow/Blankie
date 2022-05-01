@@ -25,7 +25,7 @@ def mod_i3lock(*args):
 	i3lock_args = xssmgr.module_args
 
 	# Private state:
-	s = xssmgr.global_state.setdefault(xssmgr.module_id, types.SimpleNamespace(
+	s = xssmgr.global_state.setdefault(xssmgr.module_spec, types.SimpleNamespace(
 
 		# PID of the forked i3lock process.
 		inner_pid = None,
@@ -64,7 +64,7 @@ def mod_i3lock(*args):
 
 				# Create a thread waiting for EOF from the pipe, to know when i3lock exits.
 				# (We use this method to avoid polling with e.g. `kill -0`.)
-				s.reader = threading.Thread(target=i3lock_reader, args=(xssmgr.module_id, outer.stdout, s.inner_pid,))
+				s.reader = threading.Thread(target=i3lock_reader, args=(xssmgr.module_spec, outer.stdout, s.inner_pid,))
 				s.reader.start()
 
 				logv('mod_i3lock: Started i3lock (PID %d).', s.inner_pid)
@@ -102,8 +102,8 @@ def mod_i3lock(*args):
 				s.inner_pid = None
 				xssmgr.unlock()
 
-def i3lock_reader(module_id, f, pid):
+def i3lock_reader(module_spec, f, pid):
 	f.read()
 	# If we're here, f.read() reached EOF, which means that all write ends
 	# of the pipe were closed, which means that i3lock exited.
-	xssmgr.daemon.call(xssmgr.module_command, module_id, '_exit', pid)
+	xssmgr.daemon.call(xssmgr.module_command, module_spec, '_exit', pid)

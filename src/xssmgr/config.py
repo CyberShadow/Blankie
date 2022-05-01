@@ -21,15 +21,15 @@ class Configurator:
 
 	def on_start(self, module, *parameters):
 		'''Called from the user's configuration to register an on-start module.'''
-		self.on_start_modules.append(xssmgr.get_module_id(module, *parameters))
+		self.on_start_modules.append((module, *parameters))
 
 	def on_lock(self, module, *parameters):
 		'''Called from the user's configuration to register an on-lock module.'''
-		self.on_lock_modules.append(xssmgr.get_module_id(module, *parameters))
+		self.on_lock_modules.append((module, *parameters))
 
 	def on_idle(self, idle_seconds, module, *parameters):
 		'''Called from the user's configuration to register an on-idle module.'''
-		self.on_idle_modules.append((idle_seconds, xssmgr.get_module_id(module, *parameters)))
+		self.on_idle_modules.append((idle_seconds, (module, *parameters)))
 
 	def selector(self):
 		'''Module selector which applies the user's configuration.'''

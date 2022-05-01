@@ -14,7 +14,7 @@ from xssmgr.util import *
 
 def mod_timer(*args):
 	# Private state:
-	s = xssmgr.global_state.setdefault(xssmgr.module_id, types.SimpleNamespace(
+	s = xssmgr.global_state.setdefault(xssmgr.module_spec, types.SimpleNamespace(
 
 		# Timer instance, which waits until the next event
 		timer = None,
@@ -56,7 +56,7 @@ def timer_schedule(s):
 		s.timer = threading.Timer(
 			interval=to_sleep / 1000,
 			function=xssmgr.daemon.call,
-			args=(xssmgr.module_command, xssmgr.module_id, '_wait_done')
+			args=(xssmgr.module_command, xssmgr.module_spec, '_wait_done')
 		)
 		s.timer.start()
 		logv('mod_timer: Started new timer for %d milliseconds.', to_sleep)

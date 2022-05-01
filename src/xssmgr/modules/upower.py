@@ -15,7 +15,7 @@ from xssmgr.util import *
 
 def mod_upower(*args):
 	# Private state:
-	s = xssmgr.global_state.setdefault(xssmgr.module_id, types.SimpleNamespace(
+	s = xssmgr.global_state.setdefault(xssmgr.module_spec, types.SimpleNamespace(
 
 		# Popen of the managed upower process.
 		upower = None,
@@ -32,7 +32,7 @@ def mod_upower(*args):
 				s.upower = subprocess.Popen(
 					['upower', '--monitor'],
 					stdout=subprocess.PIPE)
-				s.reader = threading.Thread(target=upower_reader, args=(xssmgr.module_id, s.upower.stdout))
+				s.reader = threading.Thread(target=upower_reader, args=(xssmgr.module_spec, s.upower.stdout))
 				s.reader.start()
 				logv('mod_upower: Started upower (PID %d).', s.upower.pid)
 		case 'stop':
@@ -51,6 +51,6 @@ def mod_upower(*args):
 			logv('mod_upower: Got a line from upower, reconfiguring.')
 			xssmgr.config.reconfigure()
 
-def upower_reader(module_id, f):
+def upower_reader(module_spec, f):
 	while f.readline():
-		xssmgr.daemon.call(xssmgr.module_command, module_id, '_ping')
+		xssmgr.daemon.call(xssmgr.module_command, module_spec, '_ping')

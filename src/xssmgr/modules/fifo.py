@@ -14,7 +14,7 @@ from xssmgr.util import *
 
 def mod_fifo(*args):
 	# Private state:
-	s = xssmgr.global_state.setdefault(xssmgr.module_id, types.SimpleNamespace(
+	s = xssmgr.global_state.setdefault(xssmgr.module_spec, types.SimpleNamespace(
 
 		# reader thread
 		reader = None,

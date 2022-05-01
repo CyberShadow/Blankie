@@ -17,7 +17,7 @@ def mod_xkbmap(*args):
 	xkbmap_args = xssmgr.module_args
 
 	# Private state:
-	s = xssmgr.global_state.setdefault(xssmgr.module_id, types.SimpleNamespace(
+	s = xssmgr.global_state.setdefault(xssmgr.module_spec, types.SimpleNamespace(
 
 		# The previous keyboard configuration.
 		xkbmap_state = None,

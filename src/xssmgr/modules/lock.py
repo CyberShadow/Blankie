@@ -20,5 +20,5 @@ def mod_lock(*args):
 # Ensure lock module isn't stopped upon locking
 def lock_selector():
 	if xssmgr.locked:
-		xssmgr.wanted_modules.append(xssmgr.get_module_id('lock'))
+		xssmgr.wanted_modules.append(('lock', ))
 xssmgr.module_selectors['50-lock'] = lock_selector

@@ -13,7 +13,7 @@ from xssmgr.util import *
 
 def mod_xss(*args):
 	# Private state:
-	s = xssmgr.global_state.setdefault(xssmgr.module_id, types.SimpleNamespace(
+	s = xssmgr.global_state.setdefault(xssmgr.module_spec, types.SimpleNamespace(
 
 		# xss Popen object
 		xss = None,
@@ -42,7 +42,7 @@ def mod_xss(*args):
 					raise Exception('mod_xss: Failed to start xss.')
 
 				# Start event reader task
-				s.reader = threading.Thread(target=xss_reader, args=(xssmgr.module_id, s.xss.stdout))
+				s.reader = threading.Thread(target=xss_reader, args=(xssmgr.module_spec, s.xss.stdout))
 				s.reader.start()
 
 				logv('mod_xss: Started xss (PID %d).', s.xss.pid)
@@ -76,7 +76,7 @@ def mod_xss(*args):
 					log('mod_xss: Unknown line received from xss: %s', str(args[1:]))
 
 
-def xss_reader(module_id, f):
+def xss_reader(module_spec, f):
 	while line := f.readline():
-		xssmgr.daemon.call(xssmgr.module_command, module_id, '_event', *line.split())
+		xssmgr.daemon.call(xssmgr.module_command, module_spec, '_event', *line.split())
 	logv('mod_xss: xss exited (EOF).')
