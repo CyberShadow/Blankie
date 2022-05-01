@@ -3,6 +3,7 @@
 # and the screen locker.
 
 import hashlib
+import importlib
 import os
 import sys
 
@@ -60,8 +61,20 @@ def load_module(module_name):
 		module_file = module_dir  + '/' + module_name + '.py'
 		if os.path.exists(module_file):
 			logv('Loading module \'%s\' from \'%s\'', module_name, module_file)
-			with open(module_file, 'rb') as f:
-				exec(f.read(), globals())
+			python_module_name = 'xssmgr.modules' + module_name
+
+			# https://docs.python.org/3/library/importlib.html#importing-a-source-file-directly
+			spec = importlib.util.spec_from_file_location(python_module_name, module_file)
+			module = importlib.util.module_from_spec(spec)
+			sys.modules[module_name] = module
+			spec.loader.exec_module(module)
+
+			# Pull in module function definitions into our global namespace.
+			# TODO: maintain a dict instead.
+			for name, value in vars(module).items():
+				if name.startswith('mod_'):
+					globals()[name] = value
+
 			return
 
 	raise Exception('Module \'%s\' not found (looked in: %s)' % (
