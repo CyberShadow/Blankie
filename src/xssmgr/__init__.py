@@ -69,15 +69,6 @@ class State:
 state = State()
 
 # -----------------------------------------------------------------------------
-# Communication globals, used to store additional values passed between functions.
-# These should be refactored away.
-
-# List built by module selectors to choose which modules should be
-# running at the moment.
-# TODO: refactor out
-wanted_modules = None
-
-# -----------------------------------------------------------------------------
 # Import xssmgr modules
 # Placed after the variable declarations above, so that they can be
 # used by the imported modules.
@@ -91,7 +82,7 @@ from xssmgr.util import *
 # -----------------------------------------------------------------------------
 # Core functionality: run core modules
 
-def core_selector():
+def core_selector(wanted_modules):
 	wanted_modules.extend([
 		# Receives commands / events from other processes.
 		('fifo', ),

@@ -19,7 +19,7 @@ class LockModule(xssmgr.modules.Module):
 
 
 # Ensure lock module isn't stopped upon locking
-def lock_selector():
+def lock_selector(wanted_modules):
 	if xssmgr.state.locked:
-		xssmgr.wanted_modules.append(('lock', ))
+		wanted_modules.append(('lock', ))
 xssmgr.modules.selectors['50-lock'] = lock_selector

@@ -57,8 +57,8 @@ def sighup(_signal, _frame):
 	call(xssmgr.config.reload)
 
 
-def shutdown_selector():
-	xssmgr.wanted_modules.clear()
+def shutdown_selector(wanted_modules):
+	wanted_modules.clear()
 
 
 # Exit trap.

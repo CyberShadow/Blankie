@@ -53,9 +53,17 @@ module_dirs = []
 # Currently running modules.
 running_modules = []
 
+# The modules we want to be running, according to the last invocation
+# of update().  This is a global (instead of a local /
+# start_stop_modules parameter) to support recursive calls to
+# update().
+wanted_modules = None
+
 # Functions to call to build the list of modules which should be
 # running right now.
 # Functions are called in order of this associative array's keys.
+# Functions accept one argument - a list, which they should mutate to
+# describe which modules they want to be running right now.
 selectors = {}
 
 def load_module(module_name):
@@ -101,8 +109,8 @@ def get(module_spec):
 	module_instances[module_spec] = module
 	return module
 
-# Start or stop modules, synchronizing running_modules
-# against wanted_modules.
+# Start or stop modules, synchronizing running_modules against
+# wanted_modules.
 def start_stop_modules():
 	# logv('Running modules:%s', ''.join('\n- ' + m for m in running_modules))
 	# logv('Wanted  modules:%s', ''.join('\n- ' + m for m in wanted_modules))
@@ -113,11 +121,11 @@ def start_stop_modules():
 	# there is no work left to be done.
 
 	# 1. Reconfigure modules which can be reconfigured.
-	for wanted_module in xssmgr.wanted_modules:
+	for wanted_module in wanted_modules:
 		if wanted_module not in running_modules:
 			for i, running_module in enumerate(running_modules):
 				if wanted_module[0] == running_module[0] and \
-				   running_module not in xssmgr.wanted_modules:
+				   running_module not in wanted_modules:
 					module = get(running_module)
 					result = module.reconfigure(*wanted_module[1:])
 					if result:
@@ -126,12 +134,12 @@ def start_stop_modules():
 						module_instances[wanted_module] = module
 						logv('Reconfigured module %s from %s to %s.',
 							 wanted_module[0], running_module[1:], wanted_module[1:])
-						return start_stop_modules()  # Recurse
+						return start_stop_modules(wanted_modules)  # Recurse
 
 	# 2. Stop modules which we no longer want to be running.
 	# Do this in reverse order of starting them.
 	for i, running_module in reversed(list(enumerate(running_modules))):
-		if running_module not in xssmgr.wanted_modules:
+		if running_module not in wanted_modules:
 			del running_modules[i]
 			logv('Stopping module %s', str(running_module))
 			# It is important that, in case of an error, we revert
@@ -146,16 +154,16 @@ def start_stop_modules():
 				traceback.print_exc()
 				xssmgr.exit_code = 1
 			logv('Stopped module %s', str(running_module))
-			return start_stop_modules()  # Recurse
+			return start_stop_modules(wanted_modules)  # Recurse
 
 	# 3. Start modules which we now want to be running.
-	for wanted_module in xssmgr.wanted_modules:
+	for wanted_module in wanted_modules:
 		if wanted_module not in running_modules:
 			running_modules.append(wanted_module)
 			logv('Starting module: %s', str(wanted_module))
 			get(wanted_module).start()
 			logv('Started module: %s', str(wanted_module))
-			return start_stop_modules()  # Recurse
+			return start_stop_modules(wanted_modules)  # Recurse
 
 	# If we reached this point, there is no more work to do.
 	logv('Modules are synchronized.')
@@ -169,12 +177,13 @@ def update():
 
 	logv('Updating list of modules to run with circumstances: %s', xssmgr.state)
 
-	xssmgr.wanted_modules = []
+	global wanted_modules
+	wanted_modules = []
 
 	for key in sorted(selectors.keys()):
 		selector = selectors[key]
 		# logv('Calling module selector: %s', selector)
-		selector()
+		selector(wanted_modules)
 
 	# 2. Start/stop modules accordingly.
 	start_stop_modules()

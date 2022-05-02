@@ -34,7 +34,7 @@ class Configurator:
 			raise Exception('Invalid idle time - must be a positive integer')
 		self.on_idle_modules.append((idle_seconds, (module, *parameters)))
 
-	def selector(self):
+	def selector(self, wanted_modules):
 		'''Module selector which applies the user's configuration.'''
 
 		schedule = get_schedule()
@@ -45,23 +45,23 @@ class Configurator:
 		# unidle events; wants to know the time of the first idle
 		# event, so that we are notified of this via xss.
 		if len(schedule) > 0:
-			xssmgr.wanted_modules.append(('xset', schedule[0]))
+			wanted_modules.append(('xset', schedule[0]))
 
 		# React to locking/unlocking by starting/stopping on_lock modules.
 		if xssmgr.state.locked:
-			xssmgr.wanted_modules.extend(self.on_lock_modules)
+			wanted_modules.extend(self.on_lock_modules)
 
 		if xssmgr.state.idle and len(schedule) > 0:
 			# Wakes us up when it's time to run the next on_idle hook(s).
-			xssmgr.wanted_modules.append(('timer', frozenset(schedule)))
+			wanted_modules.append(('timer', frozenset(schedule)))
 
 		# User-configured modules:
 
-		xssmgr.wanted_modules.extend(self.on_start_modules)
+		wanted_modules.extend(self.on_start_modules)
 
 		for (timeout, module_spec) in self.on_idle_modules:
 			if xssmgr.state.idle_time >= timeout * 1000:
-				xssmgr.wanted_modules.append(module_spec)
+				wanted_modules.append(module_spec)
 
 	def print_status(self, f):
 		'''Used in 'xssmgr status' command.'''
