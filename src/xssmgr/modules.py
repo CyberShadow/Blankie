@@ -117,55 +117,63 @@ def start_stop_modules():
 
 	# Because modules may themselves start or stop other modules when
 	# they are started or stopped, support recursion by performing one
-	# operation at a time, and recursing to restart the loop until
-	# there is no work left to be done.
+	# operation at a time, and looping until there is no work left to
+	# be done.  Note that wanted_modules may change "under our feet"
+	# in response to a module starting or stopping.
 
-	# 1. Reconfigure modules which can be reconfigured.
-	for wanted_module in wanted_modules:
-		if wanted_module not in running_modules:
-			for i, running_module in enumerate(running_modules):
-				if wanted_module[0] == running_module[0] and \
-				   running_module not in wanted_modules:
-					module = get(running_module)
-					result = module.reconfigure(*wanted_module[1:])
-					if result:
-						running_modules[i] = wanted_module
-						del module_instances[running_module]
-						module_instances[wanted_module] = module
-						logv('Reconfigured module %s from %s to %s.',
-							 wanted_module[0], running_module[1:], wanted_module[1:])
-						return start_stop_modules(wanted_modules)  # Recurse
+	# Use a local function to break out of deep loops.
+	def do_one_module():
+		# 1. Reconfigure modules which can be reconfigured.
+		for wanted_module in wanted_modules:
+			if wanted_module not in running_modules:
+				for i, running_module in enumerate(running_modules):
+					if wanted_module[0] == running_module[0] and \
+					   running_module not in wanted_modules:
+						module = get(running_module)
+						result = module.reconfigure(*wanted_module[1:])
+						if result:
+							running_modules[i] = wanted_module
+							del module_instances[running_module]
+							module_instances[wanted_module] = module
+							logv('Reconfigured module %s from %s to %s.',
+								 wanted_module[0], running_module[1:], wanted_module[1:])
+							return True  # Keep going
 
-	# 2. Stop modules which we no longer want to be running.
-	# Do this in reverse order of starting them.
-	for i, running_module in reversed(list(enumerate(running_modules))):
-		if running_module not in wanted_modules:
-			del running_modules[i]
-			logv('Stopping module %s', str(running_module))
-			# It is important that, in case of an error, we revert
-			# back to the original state insofar as possible.
-			# This means that an error in one module should not cause
-			# us to not try to stop other modules.
-			module = get(running_module)
-			try:
-				module.stop()
-			except Exception:
-				log('Error when attempting to stop module %s:', str(running_module))
-				traceback.print_exc()
-				xssmgr.exit_code = 1
-			logv('Stopped module %s', str(running_module))
-			return start_stop_modules(wanted_modules)  # Recurse
+		# 2. Stop modules which we no longer want to be running.
+		# Do this in reverse order of starting them.
+		for i, running_module in reversed(list(enumerate(running_modules))):
+			if running_module not in wanted_modules:
+				del running_modules[i]
+				logv('Stopping module %s', str(running_module))
+				# It is important that, in case of an error, we revert
+				# back to the original state insofar as possible.
+				# This means that an error in one module should not cause
+				# us to not try to stop other modules.
+				module = get(running_module)
+				try:
+					module.stop()
+				except Exception:
+					log('Error when attempting to stop module %s:', str(running_module))
+					traceback.print_exc()
+					xssmgr.exit_code = 1
+				logv('Stopped module %s', str(running_module))
+				return True  # Keep going
 
-	# 3. Start modules which we now want to be running.
-	for wanted_module in wanted_modules:
-		if wanted_module not in running_modules:
-			running_modules.append(wanted_module)
-			logv('Starting module: %s', str(wanted_module))
-			get(wanted_module).start()
-			logv('Started module: %s', str(wanted_module))
-			return start_stop_modules(wanted_modules)  # Recurse
+		# 3. Start modules which we now want to be running.
+		for wanted_module in wanted_modules:
+			if wanted_module not in running_modules:
+				running_modules.append(wanted_module)
+				logv('Starting module: %s', str(wanted_module))
+				get(wanted_module).start()
+				logv('Started module: %s', str(wanted_module))
+				return True  # Keep going
 
-	# If we reached this point, there is no more work to do.
+		# If we reached this point, there is no more work to do.
+		return False
+
+	while do_one_module():
+		pass  # Keep going
+
 	logv('Modules are synchronized.')
 
 # Start or stop modules according to the current circumstances.
