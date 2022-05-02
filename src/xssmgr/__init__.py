@@ -5,6 +5,7 @@
 import importlib
 import os
 import sys
+import traceback
 
 # -----------------------------------------------------------------------------
 # External globals - made available to the configuration and external processes
@@ -37,6 +38,11 @@ if is_source_checkout:
 	lib_dir = os.path.dirname(__file__) + '/../../lib'
 else:
 	lib_dir = '/usr/lib/xssmgr'
+
+# Exit code we should use when exiting.
+# Can be set to non-zero to indicate that a non-fatal error occurred
+# somewhere.
+exit_code = 0
 
 # -----------------------------------------------------------------------------
 # Core module machinery
@@ -164,7 +170,18 @@ def start_stop_modules():
 		if running_module not in wanted_modules:
 			del running_modules[i]
 			logv('Stopping module %s', str(running_module))
-			get_module(running_module).stop()
+			# It is important that, in case of an error, we revert
+			# back to the original state insofar as possible.
+			# This means that an error in one module should not cause
+			# us to not try to stop other modules.
+			module = get_module(running_module)
+			try:
+				module.stop()
+			except Exception:
+				log('Error when attempting to stop module %s:', str(running_module))
+				traceback.print_exc()
+				global exit_code
+				exit_code = 1
 			logv('Stopped module %s', str(running_module))
 			return start_stop_modules()  # Recurse
 
@@ -338,3 +355,5 @@ Commands:
 		case _:
 			log('Unknown command: %s', str(args))
 			sys.exit(1)
+
+	sys.exit(exit_code)
