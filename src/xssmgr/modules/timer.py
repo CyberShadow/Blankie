@@ -34,7 +34,7 @@ class TimerModule(xssmgr.modules.Module):
 		self.timer_cancel()
 
 		next_time = xssmgr.max_time
-		for (timeout, _module) in xssmgr.config.configurator.on_idle_modules:
+		for timeout in xssmgr.config.get_schedule():
 			timeout_ms = timeout * 1000
 			if xssmgr.idle_time < timeout_ms < next_time:
 				next_time = timeout_ms

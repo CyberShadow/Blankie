@@ -30,6 +30,8 @@ class Configurator:
 
 	def on_idle(self, idle_seconds, module, *parameters):
 		'''Called from the user's configuration to register an on-idle module.'''
+		if not isinstance(idle_seconds, int) or idle_seconds <= 0:
+			raise Exception('Invalid idle time - must be a positive integer')
 		self.on_idle_modules.append((idle_seconds, (module, *parameters)))
 
 	def selector(self):
@@ -102,3 +104,11 @@ def reload():
 	log('Reloading configuration.')
 	load()
 	reconfigure()
+
+# Return the list of on_idle events' trigger times (in seconds of
+# ongoing idle time), in increasing order.
+def get_schedule():
+	s = set()
+	for (timeout, _module) in configurator.on_idle_modules:
+		s.add(timeout)
+	return sorted(s)
