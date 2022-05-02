@@ -7,19 +7,22 @@ import subprocess
 import threading
 
 import xssmgr
-import xssmgr.config
 import xssmgr.daemon
 from xssmgr.util import *
 
 class TimerModule(xssmgr.modules.Module):
 	name = 'timer'
 
-	def __init__(self):
+	def __init__(self, schedule):
+		# Schedule of idle hooks (list of integers representing
+		# seconds of idle time).
+		self.timer_schedule = schedule
+
 		# Timer instance, which waits until the next event
 		self.timer = None
 
 	def start(self):
-		self.timer_schedule()
+		self.timer_start_next()
 
 	def stop(self):
 		self.timer_cancel()
@@ -30,11 +33,11 @@ class TimerModule(xssmgr.modules.Module):
 			self.timer.cancel()
 			self.timer = None
 
-	def timer_schedule(self):
+	def timer_start_next(self):
 		self.timer_cancel()
 
 		next_time = xssmgr.max_time
-		for timeout in xssmgr.config.get_schedule():
+		for timeout in self.timer_schedule:
 			timeout_ms = timeout * 1000
 			if xssmgr.idle_time < timeout_ms < next_time:
 				next_time = timeout_ms
@@ -55,4 +58,4 @@ class TimerModule(xssmgr.modules.Module):
 		xssmgr.idle_time = int(subprocess.check_output(['xprintidle']))
 		xssmgr.modules.update()
 
-		self.timer_schedule()
+		self.timer_start_next()

@@ -91,20 +91,9 @@ def core_selector():
 		# Receives commands / events from other processes.
 		('fifo', ),
 
-		# Configures the X screensaver, so that we receive idle /
-		# unidle events.
-		# TODO: extract idle schedule from configuration and pass as parameters
-		# TODO: implement reconfigure command to avoid an "xset s off"
-		('xset', ),
-
 		# Receives idle / unidle events.
 		('xss', ),
 	])
-
-	if idle:
-		# Wakes us up when it's time to run the next on_idle hook(s).
-		# TODO: extract idle schedule from configuration and pass as parameters
-		wanted_modules.append(('timer', ))
 
 xssmgr.modules.selectors['10-core'] = core_selector
 

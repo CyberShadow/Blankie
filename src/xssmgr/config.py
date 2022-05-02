@@ -36,15 +36,33 @@ class Configurator:
 
 	def selector(self):
 		'''Module selector which applies the user's configuration.'''
-		xssmgr.wanted_modules.extend(self.on_start_modules)
 
-		for (timeout, module) in self.on_idle_modules:
-			if xssmgr.idle_time >= timeout * 1000:
-				xssmgr.wanted_modules.append(module)
+		schedule = get_schedule()
+
+		# Core modules:
+
+		# Configure the X screensaver, so that we receive idle /
+		# unidle events; wants to know the time of the first idle
+		# event, so that we are notified of this via xss.
+		# TODO: implement reconfigure command to avoid an "xset s off"
+		if len(schedule) > 0:
+			xssmgr.wanted_modules.append(('xset', schedule[0]))
 
 		# React to locking/unlocking by starting/stopping on_lock modules.
 		if xssmgr.locked:
 			xssmgr.wanted_modules.extend(self.on_lock_modules)
+
+		if xssmgr.idle and len(schedule) > 0:
+			# Wakes us up when it's time to run the next on_idle hook(s).
+			xssmgr.wanted_modules.append(('timer', frozenset(schedule)))
+
+		# User-configured modules:
+
+		xssmgr.wanted_modules.extend(self.on_start_modules)
+
+		for (timeout, module_spec) in self.on_idle_modules:
+			if xssmgr.idle_time >= timeout * 1000:
+				xssmgr.wanted_modules.append(module_spec)
 
 	def print_status(self, f):
 		'''Used in 'xssmgr status' command.'''
@@ -109,6 +127,6 @@ def reload():
 # ongoing idle time), in increasing order.
 def get_schedule():
 	s = set()
-	for (timeout, _module) in configurator.on_idle_modules:
+	for (timeout, _module_spec) in configurator.on_idle_modules:
 		s.add(timeout)
 	return sorted(s)
