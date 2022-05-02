@@ -70,14 +70,15 @@ class I3LockModule(xssmgr.Module):
 		if self.inner_pid is not None:
 			logv('mod_i3lock: Killing i3lock (PID %d)...', self.inner_pid)
 
-			os.kill(self.inner_pid, signal.SIGTERM)
-			while True:
-				try:
-					os.kill(self.inner_pid, 0)
+			try:
+				os.kill(self.inner_pid, signal.SIGTERM)
+				while True:
+					os.kill(self.inner_pid, 0)  # Wait for exit
 					logv('mod_i3lock: Waiting...')
 					time.sleep(0.1)
-				except ProcessLookupError:
-					break
+			except ProcessLookupError:
+				pass  # i3lock exited, continue
+
 			self.inner_pid = None
 
 			self.reader_thread.join()
