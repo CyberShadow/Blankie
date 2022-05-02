@@ -64,9 +64,9 @@ def _run_command(*args):
 				f.write(b'pong\n')
 		case 'status':
 			with open(args[1], 'w', encoding='utf-8') as f:
-				f.write('Currently locked: %d\n' % (xssmgr.locked))
+				f.write('Currently locked: %s\n' % (xssmgr.locked))
 				f.write('Running modules:\n')
-				f.write(''.join('- %s\n' % m for m in xssmgr.modules.running_modules))
+				f.write(''.join('- %s\n' % (m,) for m in xssmgr.modules.running_modules))
 				xssmgr.config.configurator.print_status(f)
 		case 'stop':
 			xssmgr.daemon.stop()
