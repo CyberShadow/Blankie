@@ -61,7 +61,7 @@ class I3LockModule(xssmgr.Module):
 
 			# Create a thread waiting for EOF from the pipe, to know when i3lock exits.
 			# (We use this method to avoid polling with e.g. `kill -0`.)
-			self.reader_thread = threading.Thread(target=self._reader, args=(outer.stdout, self.inner_pid,))
+			self.reader_thread = threading.Thread(target=self.i3lock_reader, args=(outer.stdout, self.inner_pid,))
 			self.reader_thread.start()
 
 			logv('mod_i3lock: Started i3lock (PID %d).', self.inner_pid)
@@ -86,7 +86,7 @@ class I3LockModule(xssmgr.Module):
 
 			logv('mod_i3lock: Done.')
 
-	def _exited(self, pid):
+	def i3lock_handle_exit(self, pid):
 		if self.inner_pid is None:
 			logv('mod_i3lock: Ignoring stale i3lock exit notification (not expecting one at this time, got PID %s).',
 				 pid)
@@ -100,8 +100,8 @@ class I3LockModule(xssmgr.Module):
 			self.inner_pid = None
 			xssmgr.unlock()
 
-	def _reader(self, f, pid):
+	def i3lock_reader(self, f, pid):
 		f.read()
 		# If we're here, f.read() reached EOF, which means that all write ends
 		# of the pipe were closed, which means that i3lock exited.
-		xssmgr.daemon.call(self._exited, pid)
+		xssmgr.daemon.call(self.i3lock_handle_exit, pid)

@@ -48,10 +48,10 @@ class UPowerModule(xssmgr.Module):
 
 			logv('mod_upower: Done.')
 
-	def _ping(self):
+	def upower_handle_ping(self):
 		logv('mod_upower: Got a line from upower, reconfiguring.')
 		xssmgr.config.reconfigure()
 
 	def upower_reader(self, f):
 		while f.readline():
-			xssmgr.daemon.call(self._ping)
+			xssmgr.daemon.call(self.upower_handle_ping)

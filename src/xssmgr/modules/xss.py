@@ -56,7 +56,7 @@ class XSSModule(xssmgr.Module):
 
 			logv('mod_xss: Done.')
 
-	def _event(self, *args):
+	def xss_handle_event(self, *args):
 		logv('mod_xss: Got line from xss: %s', str(args))
 		match args[0]:
 			case b'notify':
@@ -73,5 +73,5 @@ class XSSModule(xssmgr.Module):
 
 	def xss_reader(self, f):
 		while line := f.readline():
-			xssmgr.daemon.call(self._event, *line.split())
+			xssmgr.daemon.call(self.xss_handle_event, *line.split())
 		logv('mod_xss: xss exited (EOF).')

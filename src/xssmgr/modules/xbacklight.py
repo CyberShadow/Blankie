@@ -66,7 +66,7 @@ class XBacklightModule(xssmgr.Module):
 			logv('mod_xbacklight: Running: %s', str(args))
 			self.xbacklight = subprocess.Popen(args, stdout=subprocess.PIPE)
 			logv('mod_xbacklight: Started xbacklight (PID %d).', self.xbacklight.pid)
-			threading.Thread(target=self.wait_exit, args=(self.xbacklight.stdout,)).start()
+			threading.Thread(target=self.xbacklight_reader, args=(self.xbacklight.stdout,)).start()
 
 	def stop(self):
 		if self.xbacklight is not None:
@@ -81,14 +81,14 @@ class XBacklightModule(xssmgr.Module):
 			subprocess.call(['xbacklight', *self.xbacklight_args, '-set', self.brightness, '-steps', '1', '-time', '0'])
 			self.brightness = None
 
-	def wait_exit(self, f):
+	def xbacklight_reader(self, f):
 		# Get notified when it exits, so we can forget the PID
 		# (so we later don't kill an innocent process due to
 		# PID reuse).
 		f.read() # Wait for EOF
-		xssmgr.daemon.call(self._exited)
+		xssmgr.daemon.call(self.xbacklight_handle_exit)
 
-	def _exited(self):
+	def xbacklight_handle_exit(self):
 		if self.xbacklight is not None:
 			self.xbacklight.wait()
 			logv('mod_xbacklight: xbacklight exited with status %d.', self.xbacklight.returncode)

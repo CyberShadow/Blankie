@@ -31,7 +31,7 @@ class FIFOModule(xssmgr.Module):
 		os.mkfifo(xssmgr.fifo.path, mode=0o600)
 
 		# Run reader thread
-		self.reader_thread = threading.Thread(target=self._reader, daemon=True)
+		self.reader_thread = threading.Thread(target=self.fifo_reader, daemon=True)
 		self.reader_thread.start()
 
 	def stop(self):
@@ -42,7 +42,7 @@ class FIFOModule(xssmgr.Module):
 		# Delete FIFO. We are no longer accepting commands.
 		os.remove(xssmgr.fifo.path)
 
-	def _reader(self):
+	def fifo_reader(self):
 		while True:
 			try:
 				with open(xssmgr.fifo.path, 'rb') as f:
