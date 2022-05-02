@@ -8,7 +8,7 @@ import threading
 
 import xssmgr
 import xssmgr.daemon
-from xssmgr.util import *
+from xssmgr.logging import log
 
 class XSSModule(xssmgr.modules.Module):
 	name = 'xss'
@@ -31,7 +31,7 @@ class XSSModule(xssmgr.modules.Module):
 			)
 
 			if self.xss_process.stdout.readline() != b'init\n':
-				logv('mod_xss: xss initialization failed.')
+				log.debug('mod_xss: xss initialization failed.')
 				self.xss_process.terminate()
 				self.xss_process.communicate()
 				self.xss_process = None
@@ -41,12 +41,12 @@ class XSSModule(xssmgr.modules.Module):
 			self.xss_reader_thread = threading.Thread(target=self.xss_reader, args=(self.xss_process.stdout,))
 			self.xss_reader_thread.start()
 
-			logv('mod_xss: Started xss (PID %d).', self.xss_process.pid)
+			log.debug('mod_xss: Started xss (PID %d).', self.xss_process.pid)
 
 	def stop(self):
 		# Stop xss
 		if self.xss_process is not None:
-			logv('mod_xss: Killing xss (PID %d)...', self.xss_process.pid)
+			log.debug('mod_xss: Killing xss (PID %d)...', self.xss_process.pid)
 			self.xss_process.terminate()
 			self.xss_process.communicate()
 			self.xss_process = None
@@ -54,15 +54,15 @@ class XSSModule(xssmgr.modules.Module):
 			self.xss_reader_thread.join()
 			self.xss_reader_thread = None
 
-			logv('mod_xss: Done.')
+			log.debug('mod_xss: Done.')
 
 	def xss_reader(self, f):
 		while line := f.readline():
 			xssmgr.daemon.call(self.xss_handle_event, *line.split())
-		logv('mod_xss: xss exited (EOF).')
+		log.debug('mod_xss: xss exited (EOF).')
 
 	def xss_handle_event(self, *args):
-		logv('mod_xss: Got line from xss: %s', str(args))
+		log.debug('mod_xss: Got line from xss: %s', str(args))
 		match args[0]:
 			case b'notify':
 				(state, _kind, _forced) = args[1:4]
@@ -74,4 +74,4 @@ class XSSModule(xssmgr.modules.Module):
 				xssmgr.modules.update()
 
 			case _:
-				log('mod_xss: Unknown line received from xss: %s', str(args))
+				log.warning('mod_xss: Unknown line received from xss: %s', str(args))

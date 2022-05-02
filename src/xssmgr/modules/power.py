@@ -5,7 +5,6 @@ import math
 import subprocess
 
 import xssmgr
-from xssmgr.util import *
 
 class PowerModule(xssmgr.modules.Module):
 	name = 'power'

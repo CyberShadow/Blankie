@@ -10,7 +10,7 @@ import threading
 import xssmgr
 import xssmgr.config
 import xssmgr.daemon
-from xssmgr.util import *
+from xssmgr.logging import log
 
 class UPowerModule(xssmgr.modules.Module):
 	name = 'upower'
@@ -33,11 +33,11 @@ class UPowerModule(xssmgr.modules.Module):
 				stdout=subprocess.PIPE)
 			self.upower_reader_thread = threading.Thread(target=self.upower_reader, args=(self.upower_process.stdout))
 			self.upower_reader_thread.start()
-			logv('mod_upower: Started upower (PID %d).', self.upower_process.pid)
+			log.debug('mod_upower: Started upower (PID %d).', self.upower_process.pid)
 
 	def stop(self):
 		if self.upower_process is not None:
-			logv('mod_upower: Killing upower (PID %d)...', self.upower_process.pid)
+			log.debug('mod_upower: Killing upower (PID %d)...', self.upower_process.pid)
 
 			self.upower_process.terminate()
 			self.upower_process.wait()
@@ -46,12 +46,12 @@ class UPowerModule(xssmgr.modules.Module):
 			self.upower_reader_thread.join()
 			self.upower_reader_thread = None
 
-			logv('mod_upower: Done.')
+			log.debug('mod_upower: Done.')
 
 	def upower_reader(self, f):
 		while f.readline():
 			xssmgr.daemon.call(self.upower_handle_ping)
 
 	def upower_handle_ping(self):
-		logv('mod_upower: Got a line from upower, reconfiguring.')
+		log.debug('mod_upower: Got a line from upower, reconfiguring.')
 		xssmgr.config.reconfigure()

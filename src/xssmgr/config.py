@@ -2,10 +2,11 @@
 
 import importlib
 import os
+import sys
 
 import xssmgr
 import xssmgr.modules
-from xssmgr.util import *
+from xssmgr.logging import log
 
 # The user config module.
 module = None
@@ -90,7 +91,7 @@ def load():
 
 	for config_file in config_files:
 		if os.path.exists(config_file):
-			logv('Loading configuration from \'%s\'.', config_file)
+			log.debug('Loading configuration from \'%s\'.', config_file)
 
 			# https://docs.python.org/3/library/importlib.html#importing-a-source-file-directly
 			module_name = 'xssmgr_user_config'
@@ -100,12 +101,12 @@ def load():
 			spec.loader.exec_module(module)
 			return
 
-	log('WARNING: No configuration file found.')
-	log('Please check installation or create \'%s\'.', config_files[0])
+	log.warning('WARNING: No configuration file found.')
+	log.warning('Please check installation or create \'%s\'.', config_files[0])
 
 # Re-evaluate the configuration and update our state to match.
 def reconfigure():
-	logv('Reconfiguring.')
+	log.debug('Reconfiguring.')
 
 	# Reset settings before (re-)loading configuration file.
 	configurator.reset()
@@ -118,7 +119,7 @@ def reconfigure():
 
 # Reload the configuration file and re-apply the configuration.
 def reload():
-	log('Reloading configuration.')
+	log.info('Reloading configuration.')
 	load()
 	reconfigure()
 

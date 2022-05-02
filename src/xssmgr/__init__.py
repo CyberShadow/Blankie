@@ -20,9 +20,6 @@ run_dir = os.environ.setdefault(
 	) + '/xssmgr-' + os.environ['DISPLAY']
 )
 
-# Log verbosity setting.
-verbose = int(os.getenv('XSSMGR_VERBOSE', '0'))
-
 # -----------------------------------------------------------------------------
 # Internal globals
 
@@ -77,7 +74,7 @@ import xssmgr.config
 import xssmgr.daemon
 import xssmgr.fifo
 import xssmgr.modules
-from xssmgr.util import *
+from xssmgr.logging import log
 
 # -----------------------------------------------------------------------------
 # Core functionality: run core modules
@@ -168,7 +165,7 @@ Commands:
 			xssmgr.modules.get(module_spec).cli_command(args[2:])
 
 		case _:
-			log('Unknown command: %s', str(args))
+			log.critical('Unknown command: %s', str(args))
 			sys.exit(1)
 
 	sys.exit(exit_code)

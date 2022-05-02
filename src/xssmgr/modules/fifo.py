@@ -9,7 +9,7 @@ import threading
 
 import xssmgr
 import xssmgr.fifo
-from xssmgr.util import *
+from xssmgr.logging import log
 
 class FIFOModule(xssmgr.modules.Module):
 	name = 'fifo'
@@ -25,7 +25,7 @@ class FIFOModule(xssmgr.modules.Module):
 		# Remove stale FIFO
 		with contextlib.suppress(FileNotFoundError):
 			os.remove(xssmgr.fifo.path)
-			logv('mod_fifo: Removed stale FIFO: %s', xssmgr.fifo.path)
+			log.debug('mod_fifo: Removed stale FIFO: %s', xssmgr.fifo.path)
 
 		# Create the event funnel FIFO
 		os.mkfifo(xssmgr.fifo.path, mode=0o600)
@@ -48,16 +48,17 @@ class FIFOModule(xssmgr.modules.Module):
 				with open(xssmgr.fifo.path, 'rb') as f:
 					command_str = f.readline().rstrip(b'\n')
 			except FileNotFoundError:
-				logv('mod_fifo: FIFO gone - stopping.')
+				log.debug('mod_fifo: FIFO gone - stopping.')
 				return
 
+			log.trace('mod_fifo: Got string: %s', command_str)
 			command = eval(command_str)  # TODO
 			xssmgr.daemon.call(_run_command, *command)
 
 
 # Handle one command received from the FIFO.
 def _run_command(*args):
-	logv('mod_fifo: Got command: %s', str(args))
+	log.debug('mod_fifo: Got command: %s', str(args))
 	match args[0]:
 		case 'ping':
 			with open(args[1], 'wb') as f:
@@ -75,18 +76,18 @@ def _run_command(*args):
 		case 'module': # Synchronously execute module subcommand, in the daemon process
 			xssmgr.modules.get(args[1]).fifo_command(*args[2:])
 		case 'lock':
-			log('mod_fifo: Locking the screen due to user request.')
+			log.security('mod_fifo: Locking the screen due to user request.')
 			if not xssmgr.state.locked:
 				xssmgr.lock()
 				with open(args[1], 'wb') as f: f.write(b'Locked.\n')
 			else:
 				with open(args[1], 'wb') as f: f.write(b'Already locked.\n')
 		case 'unlock':
-			log('mod_fifo: Unlocking the screen due to user request.')
+			log.security('mod_fifo: Unlocking the screen due to user request.')
 			if xssmgr.state.locked:
 				xssmgr.unlock()
 				with open(args[1], 'wb') as f: f.write(b'Unlocked.\n')
 			else:
 				with open(args[1], 'wb') as f: f.write(b'Already unlocked.\n')
 		case _:
-			log('mod_fifo: Ignoring unknown daemon command: %s', str(args))
+			log.warning('mod_fifo: Ignoring unknown daemon command: %s', str(args))

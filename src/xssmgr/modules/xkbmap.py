@@ -7,7 +7,7 @@ import subprocess
 import xssmgr
 import xssmgr.config
 import xssmgr.fifo
-from xssmgr.util import *
+from xssmgr.logging import log
 
 class XKBMapModule(xssmgr.modules.Module):
 	name = 'xkbmap'

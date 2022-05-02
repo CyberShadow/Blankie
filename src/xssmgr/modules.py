@@ -2,10 +2,11 @@
 
 import importlib
 import os
+import sys
 import traceback
 
 import xssmgr
-from xssmgr.util import *
+from xssmgr.logging import log
 
 # Base class for modules.
 class Module:
@@ -70,7 +71,7 @@ def load_module(module_name):
 	for module_dir in module_dirs:
 		module_file = module_dir  + '/' + module_name + '.py'
 		if os.path.exists(module_file):
-			logv('Loading module \'%s\' from \'%s\'', module_name, module_file)
+			log.debug('Loading module \'%s\' from \'%s\'', module_name, module_file)
 			python_module_name = 'xssmgr.modules' + module_name
 
 			# https://docs.python.org/3/library/importlib.html#importing-a-source-file-directly
@@ -96,7 +97,7 @@ def get(module_spec):
 	module_name = module_spec[0]
 	module_classes = [c for c in Module.__subclasses__() if c.name == module_name]
 	if len(module_classes) == 0:
-		logv('Auto-loading module \'%s\'', module_name)
+		log.debug('Auto-loading module \'%s\'', module_name)
 		load_module(module_name)
 		module_classes = [c for c in Module.__subclasses__() if c.name == module_name]
 
@@ -112,8 +113,8 @@ def get(module_spec):
 # Start or stop modules, synchronizing running_modules against
 # wanted_modules.
 def start_stop_modules():
-	# logv('Running modules:%s', ''.join('\n- ' + m for m in running_modules))
-	# logv('Wanted  modules:%s', ''.join('\n- ' + m for m in wanted_modules))
+	log.trace('Running modules:%s', ''.join('\n- ' + str(m) for m in running_modules))
+	log.trace('Wanted  modules:%s', ''.join('\n- ' + str(m) for m in wanted_modules))
 
 	# Because modules may themselves start or stop other modules when
 	# they are started or stopped, support recursion by performing one
@@ -135,7 +136,7 @@ def start_stop_modules():
 							running_modules[i] = wanted_module
 							del module_instances[running_module]
 							module_instances[wanted_module] = module
-							logv('Reconfigured module %s from %s to %s.',
+							log.debug('Reconfigured module %s from %s to %s.',
 								 wanted_module[0], running_module[1:], wanted_module[1:])
 							return True  # Keep going
 
@@ -144,7 +145,7 @@ def start_stop_modules():
 		for i, running_module in reversed(list(enumerate(running_modules))):
 			if running_module not in wanted_modules:
 				del running_modules[i]
-				logv('Stopping module %s', str(running_module))
+				log.debug('Stopping module %s', str(running_module))
 				# It is important that, in case of an error, we revert
 				# back to the original state insofar as possible.
 				# This means that an error in one module should not cause
@@ -153,19 +154,19 @@ def start_stop_modules():
 				try:
 					module.stop()
 				except Exception:
-					log('Error when attempting to stop module %s:', str(running_module))
+					log.error('Error when attempting to stop module %s:', str(running_module))
 					traceback.print_exc()
 					xssmgr.exit_code = 1
-				logv('Stopped module %s', str(running_module))
+				log.debug('Stopped module %s', str(running_module))
 				return True  # Keep going
 
 		# 3. Start modules which we now want to be running.
 		for wanted_module in wanted_modules:
 			if wanted_module not in running_modules:
 				running_modules.append(wanted_module)
-				logv('Starting module: %s', str(wanted_module))
+				log.debug('Starting module: %s', str(wanted_module))
 				get(wanted_module).start()
-				logv('Started module: %s', str(wanted_module))
+				log.debug('Started module: %s', str(wanted_module))
 				return True  # Keep going
 
 		# If we reached this point, there is no more work to do.
@@ -174,7 +175,7 @@ def start_stop_modules():
 	while do_one_module():
 		pass  # Keep going
 
-	logv('Modules are synchronized.')
+	log.debug('Modules are synchronized.')
 
 # Start or stop modules according to the current circumstances.
 def update():
@@ -183,14 +184,14 @@ def update():
 	# 1. Build the list of wanted modules.
 	# Do this by calling the functions registered in selectors.
 
-	logv('Updating list of modules to run with circumstances: %s', xssmgr.state)
+	log.debug('Updating list of modules to run with circumstances: %s', xssmgr.state)
 
 	global wanted_modules
 	wanted_modules = []
 
 	for key in sorted(selectors.keys()):
 		selector = selectors[key]
-		# logv('Calling module selector: %s', selector)
+		log.trace('Calling module selector: %s', selector)
 		selector(wanted_modules)
 
 	# 2. Start/stop modules accordingly.
