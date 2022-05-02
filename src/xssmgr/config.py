@@ -44,7 +44,6 @@ class Configurator:
 		# Configure the X screensaver, so that we receive idle /
 		# unidle events; wants to know the time of the first idle
 		# event, so that we are notified of this via xss.
-		# TODO: implement reconfigure command to avoid an "xset s off"
 		if len(schedule) > 0:
 			xssmgr.wanted_modules.append(('xset', schedule[0]))
 

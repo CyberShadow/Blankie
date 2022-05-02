@@ -16,6 +16,13 @@ class XSetModule(xssmgr.modules.Module):
 		# Idle time in seconds of the first idle hook.
 		self.xset_time = time
 
+	def reconfigure(self, time):
+		self.xset_time = time
+		logv('mod_xset: Reconfiguring X screensaver to activate after %s seconds.',
+			 self.xset_time)
+		subprocess.check_call(['xset', 's', str(self.xset_time), '0'])
+		return True
+
 	def start(self):
 		# We configure the X screen saver to "activate" at the
 		# requested idle time of the first idle hook.  Beyond that,
