@@ -56,8 +56,8 @@ def shutdown():
 	logv('Shutting down.')
 
 	# Stop all modules.
-	xssmgr.module_selectors['95-shutdown'] = shutdown_selector
-	xssmgr.update_modules()
+	xssmgr.modules.selectors['95-shutdown'] = shutdown_selector
+	xssmgr.modules.update()
 
 	# Delete PID file. We are exiting.
 	with contextlib.suppress(FileNotFoundError):

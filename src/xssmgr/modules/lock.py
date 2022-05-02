@@ -6,7 +6,7 @@ from xssmgr.util import *
 
 # Additionally define a lock module, which can be added to an on_idle
 # hook to lock the screen when idle.
-class LockModule(xssmgr.Module):
+class LockModule(xssmgr.modules.Module):
 	name = 'lock'
 
 	def start(self):
@@ -22,4 +22,4 @@ class LockModule(xssmgr.Module):
 def lock_selector():
 	if xssmgr.locked:
 		xssmgr.wanted_modules.append(('lock', ))
-xssmgr.module_selectors['50-lock'] = lock_selector
+xssmgr.modules.selectors['50-lock'] = lock_selector

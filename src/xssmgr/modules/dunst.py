@@ -6,7 +6,7 @@ import subprocess
 
 import xssmgr
 
-class DunstModule(xssmgr.Module):
+class DunstModule(xssmgr.modules.Module):
 	name = 'dunst'
 
 	def start(self):

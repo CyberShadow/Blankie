@@ -11,7 +11,7 @@ import xssmgr
 import xssmgr.fifo
 from xssmgr.util import *
 
-class FIFOModule(xssmgr.Module):
+class FIFOModule(xssmgr.modules.Module):
 	name = 'fifo'
 
 	def __init__(self):
@@ -66,7 +66,7 @@ def _run_command(*args):
 			with open(args[1], 'w', encoding='utf-8') as f:
 				f.write('Currently locked: %d\n' % (xssmgr.locked))
 				f.write('Running modules:\n')
-				f.write(''.join('- %s\n' % m for m in xssmgr.running_modules))
+				f.write(''.join('- %s\n' % m for m in xssmgr.modules.running_modules))
 				f.write('Configured on_start modules:\n')
 				f.write(''.join('- %s\n' % m for m in xssmgr.config.configurator.on_start_modules))
 				f.write('Configured on_idle modules:\n')
@@ -78,7 +78,7 @@ def _run_command(*args):
 		case 'reload':
 			xssmgr.config.reload()
 		case 'module': # Synchronously execute module subcommand, in the daemon process
-			xssmgr.get_module(args[1]).fifo_command(*args[2:])
+			xssmgr.modules.get(args[1]).fifo_command(*args[2:])
 		case 'lock':
 			log('mod_fifo: Locking the screen due to user request.')
 			if not xssmgr.locked:

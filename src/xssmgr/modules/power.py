@@ -6,7 +6,7 @@ import subprocess
 import xssmgr
 from xssmgr.util import *
 
-class PowerModule(xssmgr.Module):
+class PowerModule(xssmgr.modules.Module):
 	name = 'power'
 
 	def __init__(self, action = 'suspend'):

@@ -9,7 +9,7 @@ import xssmgr.config
 import xssmgr.fifo
 from xssmgr.util import *
 
-class XKBMapModule(xssmgr.Module):
+class XKBMapModule(xssmgr.modules.Module):
 	name = 'xkbmap'
 
 	def __init__(self, *args):

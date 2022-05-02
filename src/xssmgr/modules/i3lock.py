@@ -11,7 +11,7 @@ import xssmgr
 import xssmgr.daemon
 from xssmgr.util import *
 
-class I3LockModule(xssmgr.Module):
+class I3LockModule(xssmgr.modules.Module):
 	# Our goals:
 	# - Start i3lock when this module is started.
 	# - If i3lock fails to start (initialize), abort.

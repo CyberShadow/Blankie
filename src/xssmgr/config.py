@@ -4,6 +4,7 @@ import importlib
 import os
 
 import xssmgr
+import xssmgr.modules
 from xssmgr.util import *
 
 # The user config module.
@@ -44,7 +45,7 @@ class Configurator:
 			xssmgr.wanted_modules.extend(self.on_lock_modules)
 
 configurator = Configurator()
-xssmgr.module_selectors['20-config'] = configurator.selector
+xssmgr.modules.selectors['20-config'] = configurator.selector
 
 # (Re-)Load the configuration file.
 def load():
@@ -54,7 +55,7 @@ def load():
 	config_dirs = [os.getenv('XDG_CONFIG_HOME', os.environ['HOME'] + '/.config')] + config_dirs
 	config_files = [d + '/xssmgr/config.py' for d in config_dirs]
 
-	xssmgr.module_dirs = (
+	xssmgr.modules.module_dirs = (
 		[d + '/xssmgr/modules' for d in config_dirs] +
 		[os.path.dirname(__file__) + '/modules']
 	)
@@ -85,7 +86,7 @@ def reconfigure():
 	module.config(configurator)
 
 	# Update our state to match.
-	xssmgr.update_modules()
+	xssmgr.modules.update()
 
 # Reload the configuration file and re-apply the configuration.
 def reload():

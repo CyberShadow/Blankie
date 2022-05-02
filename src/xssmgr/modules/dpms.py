@@ -5,7 +5,7 @@ import subprocess
 
 import xssmgr
 
-class DPMSModule(xssmgr.Module):
+class DPMSModule(xssmgr.modules.Module):
 	name = 'dpms'
 
 	def __init__(self, dpms_state = 'off'):

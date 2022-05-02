@@ -25,7 +25,7 @@ def _parse_config(args):
 
 	return (xbacklight_args, xbacklight_set_args)
 
-class XBacklightModule(xssmgr.Module):
+class XBacklightModule(xssmgr.modules.Module):
 	name = 'xbacklight'
 
 	def __init__(self, *args):

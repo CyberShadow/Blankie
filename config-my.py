@@ -119,9 +119,11 @@ def config(c):
 	# screen becomes visible, thus confirming that the machine is secure.
 	c.on_lock('i3lock', '--show-failed-attempts', '--image', os.path.expanduser('~/data/images/wallpaper/blurred.png'))
 
+import xssmgr.modules
+
 # Custom on_lock xssmgr module: udiskie
 # Stops udiskie, which in turn stops automounting.
-class UDiskieModule(xssmgr.Module):
+class UDiskieModule(xssmgr.modules.Module):
 	name = 'udiskie'
 
 	def start(self):
@@ -133,7 +135,7 @@ class UDiskieModule(xssmgr.Module):
 # Custom on_lock xssmgr module: xkblayout
 # I use a custom script which replaces the entire XKB configuration,
 # to avoid some programs still using QWERTY keys in their hotkey bindings.
-class XKBLayoutModule(xssmgr.Module):
+class XKBLayoutModule(xssmgr.modules.Module):
 	name = 'xkblayout'
 
 	def start(self):

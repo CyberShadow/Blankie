@@ -12,7 +12,7 @@ import xssmgr.config
 import xssmgr.daemon
 from xssmgr.util import *
 
-class UPowerModule(xssmgr.Module):
+class UPowerModule(xssmgr.modules.Module):
 	name = 'upower'
 
 	def __init__(self):

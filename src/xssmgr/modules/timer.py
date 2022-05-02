@@ -11,7 +11,7 @@ import xssmgr.config
 import xssmgr.daemon
 from xssmgr.util import *
 
-class TimerModule(xssmgr.Module):
+class TimerModule(xssmgr.modules.Module):
 	name = 'timer'
 
 	def __init__(self):
@@ -53,6 +53,6 @@ class TimerModule(xssmgr.Module):
 		logv('mod_timer: Timer fired.')
 		self.timer = None  # It exited cleanly, no need to cancel it.
 		xssmgr.idle_time = int(subprocess.check_output(['xprintidle']))
-		xssmgr.update_modules()
+		xssmgr.modules.update()
 
 		self.timer_schedule()

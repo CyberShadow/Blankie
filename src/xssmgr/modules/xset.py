@@ -9,7 +9,7 @@ import xssmgr
 import xssmgr.config
 from xssmgr.util import *
 
-class XSetModule(xssmgr.Module):
+class XSetModule(xssmgr.modules.Module):
 	name = 'xset'
 
 	def start(self):

@@ -10,7 +10,7 @@ import xssmgr
 import xssmgr.daemon
 from xssmgr.util import *
 
-class XSSModule(xssmgr.Module):
+class XSSModule(xssmgr.modules.Module):
 	name = 'xss'
 
 	def __init__(self):
@@ -71,7 +71,7 @@ class XSSModule(xssmgr.Module):
 				else:
 					xssmgr.idle = 1
 				xssmgr.idle_time = int(subprocess.check_output(['xprintidle']))
-				xssmgr.update_modules()
+				xssmgr.modules.update()
 
 			case _:
 				log('mod_xss: Unknown line received from xss: %s', str(args))
