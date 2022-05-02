@@ -67,10 +67,10 @@ class XSSModule(xssmgr.modules.Module):
 			case b'notify':
 				(state, _kind, _forced) = args[1:4]
 				if state == b'off':
-					xssmgr.idle = 0
+					xssmgr.state.idle = False
 				else:
-					xssmgr.idle = 1
-				xssmgr.idle_time = int(subprocess.check_output(['xprintidle']))
+					xssmgr.state.idle = True
+				xssmgr.state.idle_time = int(subprocess.check_output(['xprintidle']))
 				xssmgr.modules.update()
 
 			case _:

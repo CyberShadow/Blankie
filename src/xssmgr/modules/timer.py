@@ -39,11 +39,11 @@ class TimerModule(xssmgr.modules.Module):
 		next_time = xssmgr.max_time
 		for timeout in self.timer_schedule:
 			timeout_ms = timeout * 1000
-			if xssmgr.idle_time < timeout_ms < next_time:
+			if xssmgr.state.idle_time < timeout_ms < next_time:
 				next_time = timeout_ms
 
 		if next_time < xssmgr.max_time:
-			to_sleep = next_time - xssmgr.idle_time + 1
+			to_sleep = next_time - xssmgr.state.idle_time + 1
 			self.timer = threading.Timer(
 				interval=to_sleep / 1000,
 				function=xssmgr.daemon.call,
@@ -55,7 +55,7 @@ class TimerModule(xssmgr.modules.Module):
 	def timer_handle_done(self):
 		logv('mod_timer: Timer fired.')
 		self.timer = None  # It exited cleanly, no need to cancel it.
-		xssmgr.idle_time = int(subprocess.check_output(['xprintidle']))
+		xssmgr.state.idle_time = int(subprocess.check_output(['xprintidle']))
 		xssmgr.modules.update()
 
 		self.timer_start_next()

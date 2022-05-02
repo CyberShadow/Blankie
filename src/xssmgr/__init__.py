@@ -44,20 +44,29 @@ exit_code = 0
 
 # -----------------------------------------------------------------------------
 # Current state
+
 # These encode the current state of the system, which is used to
 # select which modules should be running.
+class State:
+	# Whether we are currently idle (according to X / xss).
+	# Because xss is affected by X screen-saver inhibitors,
+	# this may be False even if xprintidle would produce a large number.
+	idle = False
 
-# Whether we are currently idle (according to X / xss).
-# Because xss is affected by X screen-saver inhibitors,
-# this may be 0 even if xprintidle would produce a large number.
-idle = 0
+	# X server idle time (as provided by xprintidle), in milliseconds,
+	# or max_time
+	idle_time = 0
 
-# X server idle time (as provided by xprintidle), in milliseconds,
-# or max_time
-idle_time = 0
+	# Do we want the lock screen to be active right now?
+	# Modified by the lock module, as well as the lock/unlock commands.
+	locked = False
 
-# Lock screen active right now?
-locked = False
+	def __str__(self):
+		return 'is locked: %s, is idle: %s, idle time: %s' % (
+			self.locked, self.idle, self.idle_time
+		)
+
+state = State()
 
 # Constant - dummy idle time used for when the system is about to go to sleep
 # TODO: use math.inf
@@ -107,17 +116,15 @@ xssmgr.modules.selectors['10-core'] = core_selector
 # for the entire duration it's running.
 
 def lock():
-	global locked
-	locked = True
+	state.locked = True
 	xssmgr.config.reconfigure()
 
 # Pipes to processes waiting for a notification for when the lock screen exits.
 unlock_notification_fds = []
 
 def unlock():
-	global locked, idle_time
-	locked = False
-	idle_time = 0  # Ensure we don't try to immediately relock / go to sleep
+	state.locked = False
+	state.idle_time = 0  # Ensure we don't try to immediately relock / go to sleep
 
 	# Notify of unlocks.
 	global unlock_notification_fds

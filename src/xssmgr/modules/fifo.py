@@ -64,7 +64,7 @@ def _run_command(*args):
 				f.write(b'pong\n')
 		case 'status':
 			with open(args[1], 'w', encoding='utf-8') as f:
-				f.write('Currently locked: %s\n' % (xssmgr.locked))
+				f.write('Currently locked: %s\n' % (xssmgr.state.locked,))
 				f.write('Running modules:\n')
 				f.write(''.join('- %s\n' % (m,) for m in xssmgr.modules.running_modules))
 				xssmgr.config.configurator.print_status(f)
@@ -76,14 +76,14 @@ def _run_command(*args):
 			xssmgr.modules.get(args[1]).fifo_command(*args[2:])
 		case 'lock':
 			log('mod_fifo: Locking the screen due to user request.')
-			if not xssmgr.locked:
+			if not xssmgr.state.locked:
 				xssmgr.lock()
 				with open(args[1], 'wb') as f: f.write(b'Locked.\n')
 			else:
 				with open(args[1], 'wb') as f: f.write(b'Already locked.\n')
 		case 'unlock':
 			log('mod_fifo: Unlocking the screen due to user request.')
-			if xssmgr.locked:
+			if xssmgr.state.locked:
 				xssmgr.unlock()
 				with open(args[1], 'wb') as f: f.write(b'Unlocked.\n')
 			else:

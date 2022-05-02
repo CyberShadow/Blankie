@@ -48,10 +48,10 @@ class Configurator:
 			xssmgr.wanted_modules.append(('xset', schedule[0]))
 
 		# React to locking/unlocking by starting/stopping on_lock modules.
-		if xssmgr.locked:
+		if xssmgr.state.locked:
 			xssmgr.wanted_modules.extend(self.on_lock_modules)
 
-		if xssmgr.idle and len(schedule) > 0:
+		if xssmgr.state.idle and len(schedule) > 0:
 			# Wakes us up when it's time to run the next on_idle hook(s).
 			xssmgr.wanted_modules.append(('timer', frozenset(schedule)))
 
@@ -60,7 +60,7 @@ class Configurator:
 		xssmgr.wanted_modules.extend(self.on_start_modules)
 
 		for (timeout, module_spec) in self.on_idle_modules:
-			if xssmgr.idle_time >= timeout * 1000:
+			if xssmgr.state.idle_time >= timeout * 1000:
 				xssmgr.wanted_modules.append(module_spec)
 
 	def print_status(self, f):

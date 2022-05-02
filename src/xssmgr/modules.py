@@ -167,8 +167,7 @@ def update():
 	# 1. Build the list of wanted modules.
 	# Do this by calling the functions registered in selectors.
 
-	logv('Updating list of modules to run with circumstances: is locked: %s, is idle: %s, idle time: %s',
-		 xssmgr.locked, xssmgr.idle, xssmgr.idle_time)
+	logv('Updating list of modules to run with circumstances: %s', xssmgr.state)
 
 	xssmgr.wanted_modules = []
 

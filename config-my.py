@@ -58,7 +58,7 @@ def config(c):
 	# Let's define some helper variables first.
 	# We want a much shorter delay if the lock screen is already active.
 
-	if not xssmgr.locked:
+	if not xssmgr.state.locked:
 		# Settings for when the lock screen is not active.
 
 		# We can have different settings for different machines by
