@@ -44,6 +44,15 @@ class Configurator:
 		if xssmgr.locked:
 			xssmgr.wanted_modules.extend(self.on_lock_modules)
 
+	def print_status(self, f):
+		'''Used in 'xssmgr status' command.'''
+		f.write('Configured on_start modules:\n')
+		f.write(''.join('- %s\n' % m for m in self.on_start_modules))
+		f.write('Configured on_idle modules:\n')
+		f.write(''.join('- %d %s\n' % m for m in self.on_idle_modules))
+		f.write('Configured on_lock modules:\n')
+		f.write(''.join('- %s\n' % m for m in self.on_lock_modules))
+
 configurator = Configurator()
 xssmgr.modules.selectors['20-config'] = configurator.selector
 

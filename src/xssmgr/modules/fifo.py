@@ -67,12 +67,7 @@ def _run_command(*args):
 				f.write('Currently locked: %d\n' % (xssmgr.locked))
 				f.write('Running modules:\n')
 				f.write(''.join('- %s\n' % m for m in xssmgr.modules.running_modules))
-				f.write('Configured on_start modules:\n')
-				f.write(''.join('- %s\n' % m for m in xssmgr.config.configurator.on_start_modules))
-				f.write('Configured on_idle modules:\n')
-				f.write(''.join('- %d %s\n' % m for m in xssmgr.config.configurator.on_idle_modules))
-				f.write('Configured on_lock modules:\n')
-				f.write(''.join('- %s\n' % m for m in xssmgr.config.configurator.on_lock_modules))
+				xssmgr.config.configurator.print_status(f)
 		case 'stop':
 			xssmgr.daemon.stop()
 		case 'reload':
