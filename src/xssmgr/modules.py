@@ -162,6 +162,8 @@ def start_stop_modules():
 
 # Start or stop modules according to the current circumstances.
 def update():
+	assert xssmgr.daemon.is_main_thread()
+
 	# 1. Build the list of wanted modules.
 	# Do this by calling the functions registered in selectors.
 

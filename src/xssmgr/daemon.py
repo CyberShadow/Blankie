@@ -6,6 +6,7 @@ import os
 import queue
 import signal
 import sys
+import threading
 import time
 
 import xssmgr
@@ -38,6 +39,15 @@ class EventLoop:
 
 _event_loop = EventLoop()
 call = _event_loop.call
+
+
+# Thread that the event loop is running in.
+# Used for assertions.
+event_loop_thread = None
+
+def is_main_thread():
+	return threading.current_thread() is event_loop_thread
+
 
 # Reload the configuration file and reconfigure.
 def sighup(_signal, _frame):
@@ -88,6 +98,11 @@ def start():
 		# Create PID file.
 		with open(pid_file, 'w', encoding='ascii') as f:
 			f.write(str(os.getpid()))
+
+		# Save current thread as the main thread.
+		global event_loop_thread
+		assert event_loop_thread is None
+		event_loop_thread = threading.current_thread()
 
 		# Start on-boot modules.
 		xssmgr.config.reconfigure()
