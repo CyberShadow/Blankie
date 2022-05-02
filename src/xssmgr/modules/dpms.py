@@ -5,19 +5,18 @@ import subprocess
 
 import xssmgr
 
-def mod_dpms(*args):
-	# Parameters:
+class DPMSModule(xssmgr.Module):
+	name = 'dpms'
 
-	# The DPMS state to set.  User configurable.
-	# Can be one of standby, suspend, or off.
-	# For most modern computer screens, the effect will be the same.
-	dpms_state = xssmgr.module_args[0] if len(xssmgr.module_args) > 0 else 'off'
+	def __init__(self, dpms_state = 'off'):
+		# The DPMS state to set.  User configurable.
+		# Can be one of standby, suspend, or off.
+		# For most modern computer screens, the effect will be the same.
+		self.dpms_state = dpms_state
 
-	# Implementation:
+	def start(self):
+		subprocess.check_call(['xset', 'dpms', 'force', self.dpms_state])
 
-	match args[0]:
-		case 'start':
-			subprocess.check_call(['xset', 'dpms', 'force', dpms_state])
-		case 'stop':
-			subprocess.check_call(['xset', 'dpms', 'force', 'on'])
-			subprocess.check_call(['xset', '-dpms'])  # Disable default settings - we control DPMS
+	def stop(self):
+		subprocess.check_call(['xset', 'dpms', 'force', 'on'])
+		subprocess.check_call(['xset', '-dpms'])  # Disable default settings - we control DPMS

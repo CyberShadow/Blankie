@@ -6,62 +6,57 @@
 import contextlib
 import os
 import threading
-import types
 
 import xssmgr
 import xssmgr.fifo
 from xssmgr.util import *
 
-def mod_fifo(*args):
-	# Private state:
-	s = xssmgr.global_state.setdefault(xssmgr.module_spec, types.SimpleNamespace(
+class FIFOModule(xssmgr.Module):
+	name = 'fifo'
 
+	def __init__(self):
 		# reader thread
-		reader = None,
-	))
+		self.reader_thread = None
 
-	# Implementation:
+	def start(self):
+		# Check if xssmgr is already running.
+		# (TODO - not translating old implementation from bash to Python)
 
-	match args[0]:
-		case 'start':
-			# Check if xssmgr is already running.
-			# (TODO - not translating old implementation from bash to Python)
-
-			# Remove stale FIFO
-			with contextlib.suppress(FileNotFoundError):
-				os.remove(xssmgr.fifo.path)
-				logv('mod_fifo: Removed stale FIFO: %s', xssmgr.fifo.path)
-
-			# Create the event funnel FIFO
-			os.mkfifo(xssmgr.fifo.path, mode=0o600)
-
-			# Run reader thread
-			s.reader = threading.Thread(target=fifo_reader, daemon=True)
-			s.reader.start()
-
-		case 'stop':
-			# TODO - we can't interrupt the blocking 'open' easily.
-			# Run the reader thread as daemon for now.
-
-			# Delete FIFO. We are no longer accepting commands.
+		# Remove stale FIFO
+		with contextlib.suppress(FileNotFoundError):
 			os.remove(xssmgr.fifo.path)
+			logv('mod_fifo: Removed stale FIFO: %s', xssmgr.fifo.path)
 
+		# Create the event funnel FIFO
+		os.mkfifo(xssmgr.fifo.path, mode=0o600)
 
-def fifo_reader():
-	while True:
-		try:
-			with open(xssmgr.fifo.path, 'rb') as f:
-				command_str = f.readline().rstrip(b'\n')
-		except FileNotFoundError:
-			logv('mod_fifo: FIFO gone - stopping.')
-			return
+		# Run reader thread
+		self.reader_thread = threading.Thread(target=self._reader, daemon=True)
+		self.reader_thread.start()
 
-		command = eval(command_str)  # TODO
-		xssmgr.daemon.call(run_command, *command)
+	def stop(self):
+		# TODO - we can't interrupt the blocking 'open' easily.
+		# Run the reader thread as daemon for now, and let it get
+		# killed automatically.
+
+		# Delete FIFO. We are no longer accepting commands.
+		os.remove(xssmgr.fifo.path)
+
+	def _reader(self):
+		while True:
+			try:
+				with open(xssmgr.fifo.path, 'rb') as f:
+					command_str = f.readline().rstrip(b'\n')
+			except FileNotFoundError:
+				logv('mod_fifo: FIFO gone - stopping.')
+				return
+
+			command = eval(command_str)  # TODO
+			xssmgr.daemon.call(_run_command, *command)
 
 
 # Handle one command received from the FIFO.
-def run_command(*args):
+def _run_command(*args):
 	logv('mod_fifo: Got command: %s', str(args))
 	match args[0]:
 		case 'ping':
@@ -83,7 +78,7 @@ def run_command(*args):
 		case 'reload':
 			xssmgr.config.reload()
 		case 'module': # Synchronously execute module subcommand, in the daemon process
-			xssmgr.module_command(*args[1:])
+			xssmgr.get_module(args[1]).fifo_command(*args[2:])
 		case 'lock':
 			log('mod_fifo: Locking the screen due to user request.')
 			if not xssmgr.locked:

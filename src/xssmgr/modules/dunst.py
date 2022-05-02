@@ -4,10 +4,13 @@
 
 import subprocess
 
-def mod_dunst(*args):
-	match args[0]:
-		case 'start':
-			subprocess.check_call(['dunstctl', 'set-paused', 'true'])
+import xssmgr
 
-		case 'stop':
-			subprocess.check_call(['dunstctl', 'set-paused', 'false'])
+class DunstModule(xssmgr.Module):
+	name = 'dunst'
+
+	def start(self):
+		subprocess.check_call(['dunstctl', 'set-paused', 'true'])
+
+	def stop(self):
+		subprocess.check_call(['dunstctl', 'set-paused', 'false'])

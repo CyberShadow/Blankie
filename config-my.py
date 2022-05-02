@@ -121,21 +121,23 @@ def config(c):
 
 # Custom on_lock xssmgr module: udiskie
 # Stops udiskie, which in turn stops automounting.
+class UDiskieModule(xssmgr.Module):
+	name = 'udiskie'
 
-def mod_udiskie(*args):
-	match args[0]:
-		case 'start':
-			subprocess.check_call(['systemctl', '--user', 'stop', 'cs-x-udiskie@:0.service'])
-		case 'stop':
-			subprocess.check_call(['systemctl', '--user', 'start', 'cs-x-udiskie@:0.service'])
+	def start(self):
+		subprocess.check_call(['systemctl', '--user', 'stop', 'cs-x-udiskie@:0.service'])
+
+	def stop(self):
+		subprocess.check_call(['systemctl', '--user', 'start', 'cs-x-udiskie@:0.service'])
 
 # Custom on_lock xssmgr module: xkblayout
 # I use a custom script which replaces the entire XKB configuration,
 # to avoid some programs still using QWERTY keys in their hotkey bindings.
+class XKBLayoutModule(xssmgr.Module):
+	name = 'xkblayout'
 
-def mod_xkblayout(*args):
-	match args[0]:
-		case 'start':
-			subprocess.check_call([os.path.expanduser('~/libexec/xkblayout'), '1']) # US Dvorak
-		case 'stop':
-			pass  # I don't care about restoring it.
+	def start(self):
+		subprocess.check_call([os.path.expanduser('~/libexec/xkblayout'), '1']) # US Dvorak
+
+	def stop(self):
+		pass  # I don't care about restoring it.

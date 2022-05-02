@@ -69,12 +69,6 @@ def load():
 			module = importlib.util.module_from_spec(spec)
 			sys.modules[module_name] = module
 			spec.loader.exec_module(module)
-
-			# TODO (hack): put xssmgr module declarations from the
-			# user configuration in the main xssmgr module
-			for name, value in vars(module).items():
-				if name.startswith('mod_'):
-					vars(xssmgr)[name] = value
 			return
 
 	log('WARNING: No configuration file found.')

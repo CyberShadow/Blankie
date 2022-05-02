@@ -4,10 +4,13 @@
 
 import subprocess
 
-def mod_physlock(*args):
-	match args[0]:
-		case 'start':
-			subprocess.check_call(['physlock', '-l'])
+import xssmgr
 
-		case 'stop':
-			subprocess.check_call(['physlock', '-L'])
+class PhysLockModule(xssmgr.Module):
+	name = 'physlock'
+
+	def start(self):
+		subprocess.check_call(['physlock', '-l'])
+
+	def stop(self):
+		subprocess.check_call(['physlock', '-L'])

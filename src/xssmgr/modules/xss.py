@@ -5,78 +5,73 @@
 
 import subprocess
 import threading
-import types
 
 import xssmgr
 import xssmgr.daemon
 from xssmgr.util import *
 
-def mod_xss(*args):
-	# Private state:
-	s = xssmgr.global_state.setdefault(xssmgr.module_spec, types.SimpleNamespace(
+class XSSModule(xssmgr.Module):
+	name = 'xss'
 
+	def __init__(self):
 		# xss Popen object
-		xss = None,
+		self.xss = None
 
 		# reader thread
-		reader = None,
-
-	))
+		self.reader = None
 
 	# Implementation:
 
-	match args[0]:
-		case 'start':
-			# Start xss
-			if s.xss is None:
-				s.xss = subprocess.Popen(
-					[xssmgr.lib_dir + '/xss'],
-					stdout = subprocess.PIPE
-				)
+	def start(self):
+		# Start xss
+		if self.xss is None:
+			self.xss = subprocess.Popen(
+				[xssmgr.lib_dir + '/xss'],
+				stdout = subprocess.PIPE
+			)
 
-				if s.xss.stdout.readline() != b'init\n':
-					logv('mod_xss: xss initialization failed.')
-					s.xss.terminate()
-					s.xss.communicate()
-					s.xss = None
-					raise Exception('mod_xss: Failed to start xss.')
+			if self.xss.stdout.readline() != b'init\n':
+				logv('mod_xss: xss initialization failed.')
+				self.xss.terminate()
+				self.xss.communicate()
+				self.xss = None
+				raise Exception('mod_xss: Failed to start xss.')
 
-				# Start event reader task
-				s.reader = threading.Thread(target=xss_reader, args=(xssmgr.module_spec, s.xss.stdout))
-				s.reader.start()
+			# Start event reader task
+			self.reader = threading.Thread(target=self.xss_reader, args=(self.xss.stdout,))
+			self.reader.start()
 
-				logv('mod_xss: Started xss (PID %d).', s.xss.pid)
+			logv('mod_xss: Started xss (PID %d).', self.xss.pid)
 
-		case 'stop':
-			# Stop xss
-			if s.xss is not None:
-				logv('mod_xss: Killing xss (PID %d)...', s.xss.pid)
-				s.xss.terminate()
-				s.xss.communicate()
-				s.xss = None
+	def stop(self):
+		# Stop xss
+		if self.xss is not None:
+			logv('mod_xss: Killing xss (PID %d)...', self.xss.pid)
+			self.xss.terminate()
+			self.xss.communicate()
+			self.xss = None
 
-				s.reader.join()
-				s.reader = None
+			self.reader.join()
+			self.reader = None
 
-				logv('mod_xss: Done.')
+			logv('mod_xss: Done.')
 
-		case '_event':
-			logv('mod_xss: Got line from xss: %s', str(args[1:]))
-			match args[1]:
-				case b'notify':
-					(state, _kind, _forced) = args[2:5]
-					if state == b'off':
-						xssmgr.idle = 0
-					else:
-						xssmgr.idle = 1
-					xssmgr.idle_time = int(subprocess.check_output(['xprintidle']))
-					xssmgr.update_modules()
+	def _event(self, *args):
+		logv('mod_xss: Got line from xss: %s', str(args))
+		match args[0]:
+			case b'notify':
+				(state, _kind, _forced) = args[1:4]
+				if state == b'off':
+					xssmgr.idle = 0
+				else:
+					xssmgr.idle = 1
+				xssmgr.idle_time = int(subprocess.check_output(['xprintidle']))
+				xssmgr.update_modules()
 
-				case _:
-					log('mod_xss: Unknown line received from xss: %s', str(args[1:]))
+			case _:
+				log('mod_xss: Unknown line received from xss: %s', str(args))
 
-
-def xss_reader(module_spec, f):
-	while line := f.readline():
-		xssmgr.daemon.call(xssmgr.module_command, module_spec, '_event', *line.split())
-	logv('mod_xss: xss exited (EOF).')
+	def xss_reader(self, f):
+		while line := f.readline():
+			xssmgr.daemon.call(self._event, *line.split())
+		logv('mod_xss: xss exited (EOF).')

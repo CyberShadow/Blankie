@@ -6,20 +6,19 @@ import subprocess
 import xssmgr
 from xssmgr.util import *
 
-def mod_power(*args):
-	# Parameters:
+class PowerModule(xssmgr.Module):
+	name = 'power'
 
-	# The action to execute.  Should be one of suspend, hibernate,
-	# hybrid-sleep, suspend-then-hibernate, or poweroff.
-	power_action = xssmgr.module_args[0] if len(xssmgr.module_args) > 0 else 'suspend'
+	def __init__(self, action = 'suspend'):
+		# The action to execute.  Should be one of suspend, hibernate,
+		# hybrid-sleep, suspend-then-hibernate, or poweroff.
+		self.power_action = action
 
-	# Implementation:
+	def start(self):
+		if xssmgr.idle_time == xssmgr.max_time:
+			# The system is already executing a power action.
+			return
+		subprocess.check_call(['systemctl', self.power_action])
 
-	match args[0]:
-		case 'start':
-			if xssmgr.idle_time == xssmgr.max_time:
-				# The system is already executing a power action.
-				return
-			subprocess.check_call(['systemctl', power_action])
-		case 'stop':
-			pass
+	def stop(self):
+		pass

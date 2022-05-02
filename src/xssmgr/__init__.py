@@ -41,6 +41,45 @@ else:
 # -----------------------------------------------------------------------------
 # Core module machinery
 
+# Base class for modules.
+class Module:
+	# All modules should define their name.
+	name = None
+
+	# Constructor. You can specify module parameters as its signature.
+	def __init__(self):
+		pass
+
+	# Start function.  If called, stop() will also be called exactly once.
+	# All resource acquisition and initialization should happen here.
+	def start(self):
+		pass
+
+	# Stop function.  Called if start() was called.
+	def stop(self):
+		pass
+
+	# Optional reconfiguration function.
+	# Should accept the same arguments as the constructor.
+	# Will be called when xssmgr wants to start and stop a pair of
+	# modules with the same name (differing only in parameters).
+	# - If it returns True, the reconfiguration is considered to have
+	#   been successful, and the module is now considered to be an
+	#   instance corresponding to the new parameters.
+	# - If it returns False, the old instance is stopped and a new
+	#   instance is started instead.
+	def reconfigure(self, *_args, **_kwargs):
+		return False
+
+	# Run an 'xssmgr module ...' command.
+	# (Runs outside the daemon process.)
+	def cli_command(self, *_args):
+		raise NotImplementedError()
+
+	# Handle a message received from the FIFO.
+	def fifo_command(self, *_args):
+		raise NotImplementedError()
+
 # Module search path.  Populated in load_config.
 module_dirs = []
 
@@ -65,12 +104,6 @@ def load_module(module_name):
 			sys.modules[module_name] = module
 			spec.loader.exec_module(module)
 
-			# Pull in module function definitions into our global namespace.
-			# TODO: maintain a dict instead.
-			for name, value in vars(module).items():
-				if name.startswith('mod_'):
-					globals()[name] = value
-
 			return
 
 	raise Exception('Module \'%s\' not found (looked in: %s)' % (
@@ -78,24 +111,28 @@ def load_module(module_name):
 		str(module_dirs),
 	))
 
-# A module instance is identified by its spec, which a tuple
-# consisting of the module name and its parameters.
-def module_command(module_spec_, *arguments):
-	global module_spec
-	module_spec = module_spec_
+# Map from module specs to Module instances.
+module_instances = {}
+
+def get_module(module_spec):
+	if module_spec in module_instances:
+		return module_instances[module_spec]
 
 	module_name = module_spec[0]
-	# Modules can read and parse their parameters from this variable.
-	global module_args
-	module_args = module_spec[1:]
-
-	module_func = 'mod_' + module_name
-	if module_func not in globals():
+	module_classes = [c for c in Module.__subclasses__() if c.name == module_name]
+	if len(module_classes) == 0:
 		logv('Auto-loading module \'%s\'', module_name)
 		load_module(module_name)
+		module_classes = [c for c in Module.__subclasses__() if c.name == module_name]
 
-	# logv('Calling %s with %s', module_func, arguments)
-	return globals()[module_func](*arguments)
+	assert len(module_classes) > 0, "No module class defined with name == '%s'" % (module_name,)
+	assert len(module_classes) == 1, "More than one module class defined with name == '%s'" % (module_name,)
+	module_class = module_classes[0]
+
+	# Instantiate
+	module = module_class(*module_spec[1:])
+	module_instances[module_spec] = module
+	return module
 
 # Start or stop modules, synchronizing running_modules
 # against wanted_modules.
@@ -114,7 +151,7 @@ def start_stop_modules():
 			for i, running_module in enumerate(running_modules):
 				if wanted_module[0] == running_module[0] and \
 				   running_module not in wanted_modules:
-					result = module_command(running_module, 'reconfigure', *wanted_module[1:])
+					result = get_module(running_module).reconfigure(*wanted_module[1:])
 					if result:
 						running_modules[i] = wanted_module
 						logv('Reconfigured module %s from %s to %s.',
@@ -127,7 +164,7 @@ def start_stop_modules():
 		if running_module not in wanted_modules:
 			del running_modules[i]
 			logv('Stopping module %s', str(running_module))
-			module_command(running_module, 'stop')
+			get_module(running_module).stop()
 			logv('Stopped module %s', str(running_module))
 			return start_stop_modules()  # Recurse
 
@@ -136,7 +173,7 @@ def start_stop_modules():
 		if wanted_module not in running_modules:
 			running_modules.append(wanted_module)
 			logv('Starting module: %s', str(wanted_module))
-			module_command(wanted_module, 'start')
+			get_module(wanted_module).start()
 			logv('Started module: %s', str(wanted_module))
 			return start_stop_modules()  # Recurse
 
@@ -191,18 +228,6 @@ max_time = float('inf')
 # running at the moment.
 # TODO: refactor out
 wanted_modules = None
-
-# Module spec (name and parameters) of the currently invoked module.
-# TODO: refactor out
-module_spec = None
-
-# Arguments of the currently invoked module.
-# TODO: refactor out
-module_args = None
-
-# Global dynamic state.
-# Artifact of literal bash -> Python translation, will be deleted.
-global_state = {}
 
 # -----------------------------------------------------------------------------
 # Core functionality: run core modules
@@ -308,7 +333,7 @@ Commands:
 			module_spec_str = args[1]
 			module_spec = eval(module_spec_str)  # TODO
 
-			module_command(module_spec, args[2:])
+			get_module(module_spec).cli_command(args[2:])
 
 		case _:
 			log('Unknown command: %s', str(args))
