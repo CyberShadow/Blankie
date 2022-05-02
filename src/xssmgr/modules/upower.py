@@ -19,32 +19,32 @@ class UPowerModule(xssmgr.Module):
 		# Private state:
 
 		# Popen of the managed upower process.
-		self.upower = None
+		self.upower_process = None
 
 		# reader thread
-		self.reader_thread = None
+		self.upower_reader_thread = None
 
 	# Implementation:
 
 	def start(self):
-		if self.upower is None:
-			self.upower = subprocess.Popen(
+		if self.upower_process is None:
+			self.upower_process = subprocess.Popen(
 				['upower', '--monitor'],
 				stdout=subprocess.PIPE)
-			self.reader_thread = threading.Thread(target=self.upower_reader, args=(self.upower.stdout))
-			self.reader_thread.start()
-			logv('mod_upower: Started upower (PID %d).', self.upower.pid)
+			self.upower_reader_thread = threading.Thread(target=self.upower_reader, args=(self.upower_process.stdout))
+			self.upower_reader_thread.start()
+			logv('mod_upower: Started upower (PID %d).', self.upower_process.pid)
 
 	def stop(self):
-		if self.upower is not None:
-			logv('mod_upower: Killing upower (PID %d)...', self.upower.pid)
+		if self.upower_process is not None:
+			logv('mod_upower: Killing upower (PID %d)...', self.upower_process.pid)
 
-			self.upower.terminate()
-			self.upower.wait()
-			self.upower = None
+			self.upower_process.terminate()
+			self.upower_process.wait()
+			self.upower_process = None
 
-			self.reader_thread.join()
-			self.reader_thread = None
+			self.upower_reader_thread.join()
+			self.upower_reader_thread = None
 
 			logv('mod_upower: Done.')
 

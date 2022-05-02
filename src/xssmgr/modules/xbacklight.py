@@ -45,10 +45,10 @@ class XBacklightModule(xssmgr.Module):
 		# Private state:
 
 		# Popen of any running xbacklight process.
-		self.xbacklight = None
+		self.xbacklight_process = None
 
 		# The original screen brightness.
-		self.brightness = None
+		self.xbacklight_brightness = None
 
 	def reconfigure(self, *args):
 		(new_xbacklight_args, new_xbacklight_set_args) = _parse_config(args)
@@ -59,27 +59,27 @@ class XBacklightModule(xssmgr.Module):
 		return False
 
 	def start(self):
-		if self.xbacklight is None:
-			self.brightness = subprocess.check_output(['xbacklight', *self.xbacklight_args, '-getf']).rstrip(b'\n')
-			logv('mod_xbacklight: Got original brightness (%s).', self.brightness)
+		if self.xbacklight_process is None:
+			self.xbacklight_brightness = subprocess.check_output(['xbacklight', *self.xbacklight_args, '-getf']).rstrip(b'\n')
+			logv('mod_xbacklight: Got original brightness (%s).', self.xbacklight_brightness)
 			args = ['xbacklight', *self.xbacklight_args, '-set', '0', *self.xbacklight_set_args]
 			logv('mod_xbacklight: Running: %s', str(args))
-			self.xbacklight = subprocess.Popen(args, stdout=subprocess.PIPE)
-			logv('mod_xbacklight: Started xbacklight (PID %d).', self.xbacklight.pid)
-			threading.Thread(target=self.xbacklight_reader, args=(self.xbacklight.stdout,)).start()
+			self.xbacklight_process = subprocess.Popen(args, stdout=subprocess.PIPE)
+			logv('mod_xbacklight: Started xbacklight (PID %d).', self.xbacklight_process.pid)
+			threading.Thread(target=self.xbacklight_reader, args=(self.xbacklight_process.stdout,)).start()
 
 	def stop(self):
-		if self.xbacklight is not None:
-			logv('mod_xbacklight: Killing xbacklight (PID %d)...', self.xbacklight.pid)
-			self.xbacklight.terminate()
-			self.xbacklight.communicate()
-			self.xbacklight = None
+		if self.xbacklight_process is not None:
+			logv('mod_xbacklight: Killing xbacklight (PID %d)...', self.xbacklight_process.pid)
+			self.xbacklight_process.terminate()
+			self.xbacklight_process.communicate()
+			self.xbacklight_process = None
 			logv('mod_xbacklight: Done.')
 
-		if self.brightness is not None:
-			logv('mod_xbacklight: Restoring original brightness (%s).', self.brightness)
-			subprocess.call(['xbacklight', *self.xbacklight_args, '-set', self.brightness, '-steps', '1', '-time', '0'])
-			self.brightness = None
+		if self.xbacklight_brightness is not None:
+			logv('mod_xbacklight: Restoring original brightness (%s).', self.xbacklight_brightness)
+			subprocess.call(['xbacklight', *self.xbacklight_args, '-set', self.xbacklight_brightness, '-steps', '1', '-time', '0'])
+			self.xbacklight_brightness = None
 
 	def xbacklight_reader(self, f):
 		# Get notified when it exits, so we can forget the PID
@@ -89,9 +89,9 @@ class XBacklightModule(xssmgr.Module):
 		xssmgr.daemon.call(self.xbacklight_handle_exit)
 
 	def xbacklight_handle_exit(self):
-		if self.xbacklight is not None:
-			self.xbacklight.wait()
-			logv('mod_xbacklight: xbacklight exited with status %d.', self.xbacklight.returncode)
-			self.xbacklight = None
+		if self.xbacklight_process is not None:
+			self.xbacklight_process.wait()
+			logv('mod_xbacklight: xbacklight exited with status %d.', self.xbacklight_process.returncode)
+			self.xbacklight_process = None
 		else:
 			logv('mod_xbacklight: Ignoring stale exit notification.')

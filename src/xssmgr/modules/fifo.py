@@ -16,7 +16,7 @@ class FIFOModule(xssmgr.Module):
 
 	def __init__(self):
 		# reader thread
-		self.reader_thread = None
+		self.fifo_reader_thread = None
 
 	def start(self):
 		# Check if xssmgr is already running.
@@ -31,8 +31,8 @@ class FIFOModule(xssmgr.Module):
 		os.mkfifo(xssmgr.fifo.path, mode=0o600)
 
 		# Run reader thread
-		self.reader_thread = threading.Thread(target=self.fifo_reader, daemon=True)
-		self.reader_thread.start()
+		self.fifo_reader_thread = threading.Thread(target=self.fifo_reader, daemon=True)
+		self.fifo_reader_thread.start()
 
 	def stop(self):
 		# TODO - we can't interrupt the blocking 'open' easily.

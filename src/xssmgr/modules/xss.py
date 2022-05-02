@@ -15,44 +15,44 @@ class XSSModule(xssmgr.Module):
 
 	def __init__(self):
 		# xss Popen object
-		self.xss = None
+		self.xss_process = None
 
 		# reader thread
-		self.reader = None
+		self.xss_reader_thread = None
 
 	# Implementation:
 
 	def start(self):
 		# Start xss
-		if self.xss is None:
-			self.xss = subprocess.Popen(
+		if self.xss_process is None:
+			self.xss_process = subprocess.Popen(
 				[xssmgr.lib_dir + '/xss'],
 				stdout = subprocess.PIPE
 			)
 
-			if self.xss.stdout.readline() != b'init\n':
+			if self.xss_process.stdout.readline() != b'init\n':
 				logv('mod_xss: xss initialization failed.')
-				self.xss.terminate()
-				self.xss.communicate()
-				self.xss = None
+				self.xss_process.terminate()
+				self.xss_process.communicate()
+				self.xss_process = None
 				raise Exception('mod_xss: Failed to start xss.')
 
 			# Start event reader task
-			self.reader = threading.Thread(target=self.xss_reader, args=(self.xss.stdout,))
-			self.reader.start()
+			self.xss_reader_thread = threading.Thread(target=self.xss_reader, args=(self.xss_process.stdout,))
+			self.xss_reader_thread.start()
 
-			logv('mod_xss: Started xss (PID %d).', self.xss.pid)
+			logv('mod_xss: Started xss (PID %d).', self.xss_process.pid)
 
 	def stop(self):
 		# Stop xss
-		if self.xss is not None:
-			logv('mod_xss: Killing xss (PID %d)...', self.xss.pid)
-			self.xss.terminate()
-			self.xss.communicate()
-			self.xss = None
+		if self.xss_process is not None:
+			logv('mod_xss: Killing xss (PID %d)...', self.xss_process.pid)
+			self.xss_process.terminate()
+			self.xss_process.communicate()
+			self.xss_process = None
 
-			self.reader.join()
-			self.reader = None
+			self.xss_reader_thread.join()
+			self.xss_reader_thread = None
 
 			logv('mod_xss: Done.')
 
