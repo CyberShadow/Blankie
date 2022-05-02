@@ -162,7 +162,7 @@ Commands:
 			xssmgr.fifo.notify(*args)
 
 		case 'status' | 'lock' | 'unlock':
-			sys.stdout.write(xssmgr.fifo.query(*args))
+			sys.stdout.buffer.write(xssmgr.fifo.query(*args))
 
 		# Internal commands:
 		case 'module':
