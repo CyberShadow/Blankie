@@ -54,7 +54,7 @@ class State:
 	idle = False
 
 	# X server idle time (as provided by xprintidle), in milliseconds,
-	# or max_time
+	# or math.inf
 	idle_time = 0
 
 	# Do we want the lock screen to be active right now?
@@ -67,10 +67,6 @@ class State:
 		)
 
 state = State()
-
-# Constant - dummy idle time used for when the system is about to go to sleep
-# TODO: use math.inf
-max_time = float('inf')
 
 # -----------------------------------------------------------------------------
 # Communication globals, used to store additional values passed between functions.
