@@ -24,14 +24,6 @@ class TimerModule(xssmgr.Module):
 	def stop(self):
 		self.timer_cancel()
 
-	def timer_handle_done(self):
-		logv('mod_timer: Timer fired.')
-		self.timer = None  # It exited cleanly, no need to cancel it.
-		xssmgr.idle_time = int(subprocess.check_output(['xprintidle']))
-		xssmgr.update_modules()
-
-		self.timer_schedule()
-
 	def timer_cancel(self):
 		if self.timer is not None:
 			logv('mod_timer: Canceling old timer wait task.')
@@ -56,3 +48,11 @@ class TimerModule(xssmgr.Module):
 			)
 			self.timer.start()
 			logv('mod_timer: Started new timer for %d milliseconds.', to_sleep)
+
+	def timer_handle_done(self):
+		logv('mod_timer: Timer fired.')
+		self.timer = None  # It exited cleanly, no need to cancel it.
+		xssmgr.idle_time = int(subprocess.check_output(['xprintidle']))
+		xssmgr.update_modules()
+
+		self.timer_schedule()

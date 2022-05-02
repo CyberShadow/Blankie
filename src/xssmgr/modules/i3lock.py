@@ -86,6 +86,12 @@ class I3LockModule(xssmgr.Module):
 
 			logv('mod_i3lock: Done.')
 
+	def i3lock_reader(self, f, pid):
+		f.read()
+		# If we're here, f.read() reached EOF, which means that all write ends
+		# of the pipe were closed, which means that i3lock exited.
+		xssmgr.daemon.call(self.i3lock_handle_exit, pid)
+
 	def i3lock_handle_exit(self, pid):
 		if self.inner_pid is None:
 			logv('mod_i3lock: Ignoring stale i3lock exit notification (not expecting one at this time, got PID %s).',
@@ -99,9 +105,3 @@ class I3LockModule(xssmgr.Module):
 			# nonexisting process when this module is stopped.
 			self.inner_pid = None
 			xssmgr.unlock()
-
-	def i3lock_reader(self, f, pid):
-		f.read()
-		# If we're here, f.read() reached EOF, which means that all write ends
-		# of the pipe were closed, which means that i3lock exited.
-		xssmgr.daemon.call(self.i3lock_handle_exit, pid)
