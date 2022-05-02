@@ -157,9 +157,12 @@ def start_stop_modules():
 			for i, running_module in enumerate(running_modules):
 				if wanted_module[0] == running_module[0] and \
 				   running_module not in wanted_modules:
-					result = get_module(running_module).reconfigure(*wanted_module[1:])
+					module = get_module(running_module)
+					result = module.reconfigure(*wanted_module[1:])
 					if result:
 						running_modules[i] = wanted_module
+						del module_instances[running_module]
+						module_instances[wanted_module] = module
 						logv('Reconfigured module %s from %s to %s.',
 							 wanted_module[0], running_module[1:], wanted_module[1:])
 						return start_stop_modules()  # Recurse
