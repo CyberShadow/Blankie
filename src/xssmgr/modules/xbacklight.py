@@ -7,7 +7,6 @@ import threading
 
 import xssmgr
 import xssmgr.daemon
-from xssmgr.logging import log
 
 def _parse_config(args):
 	xbacklight_args = []
@@ -29,6 +28,8 @@ class XBacklightModule(xssmgr.modules.Module):
 	name = 'xbacklight'
 
 	def __init__(self, *args):
+		super().__init__()
+
 		# Parameters:
 
 		# Additional arguments, used for both querying and setting (such as
@@ -61,23 +62,23 @@ class XBacklightModule(xssmgr.modules.Module):
 	def start(self):
 		if self.xbacklight_process is None:
 			self.xbacklight_brightness = subprocess.check_output(['xbacklight', *self.xbacklight_args, '-getf']).rstrip(b'\n')
-			log.debug('mod_xbacklight: Got original brightness (%s).', self.xbacklight_brightness)
+			self.log.debug('Got original brightness (%s).', self.xbacklight_brightness)
 			args = ['xbacklight', *self.xbacklight_args, '-set', '0', *self.xbacklight_set_args]
-			log.debug('mod_xbacklight: Running: %s', str(args))
+			self.log.debug('Running: %s', str(args))
 			self.xbacklight_process = subprocess.Popen(args, stdout=subprocess.PIPE)
-			log.debug('mod_xbacklight: Started xbacklight (PID %d).', self.xbacklight_process.pid)
+			self.log.debug('Started xbacklight (PID %d).', self.xbacklight_process.pid)
 			threading.Thread(target=self.xbacklight_reader, args=(self.xbacklight_process.stdout,)).start()
 
 	def stop(self):
 		if self.xbacklight_process is not None:
-			log.debug('mod_xbacklight: Killing xbacklight (PID %d)...', self.xbacklight_process.pid)
+			self.log.debug('Killing xbacklight (PID %d)...', self.xbacklight_process.pid)
 			self.xbacklight_process.terminate()
 			self.xbacklight_process.communicate()
 			self.xbacklight_process = None
-			log.debug('mod_xbacklight: Done.')
+			self.log.debug('Done.')
 
 		if self.xbacklight_brightness is not None:
-			log.debug('mod_xbacklight: Restoring original brightness (%s).', self.xbacklight_brightness)
+			self.log.debug('Restoring original brightness (%s).', self.xbacklight_brightness)
 			subprocess.call(['xbacklight', *self.xbacklight_args, '-set', self.xbacklight_brightness, '-steps', '1', '-time', '0'])
 			self.xbacklight_brightness = None
 
@@ -91,7 +92,7 @@ class XBacklightModule(xssmgr.modules.Module):
 	def xbacklight_handle_exit(self):
 		if self.xbacklight_process is not None:
 			self.xbacklight_process.wait()
-			log.debug('mod_xbacklight: xbacklight exited with status %d.', self.xbacklight_process.returncode)
+			self.log.debug('xbacklight exited with status %d.', self.xbacklight_process.returncode)
 			self.xbacklight_process = None
 		else:
-			log.debug('mod_xbacklight: Ignoring stale exit notification.')
+			self.log.debug('Ignoring stale exit notification.')

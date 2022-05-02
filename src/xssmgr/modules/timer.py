@@ -9,12 +9,13 @@ import threading
 
 import xssmgr
 import xssmgr.daemon
-from xssmgr.logging import log
 
 class TimerModule(xssmgr.modules.Module):
 	name = 'timer'
 
 	def __init__(self, schedule):
+		super().__init__()
+
 		# Schedule of idle hooks (list of integers representing
 		# seconds of idle time).
 		self.timer_schedule = schedule
@@ -30,7 +31,7 @@ class TimerModule(xssmgr.modules.Module):
 
 	def timer_cancel(self):
 		if self.timer is not None:
-			log.debug('mod_timer: Canceling old timer wait task.')
+			self.log.debug('Canceling old timer wait task.')
 			self.timer.cancel()
 			self.timer = None
 
@@ -51,10 +52,10 @@ class TimerModule(xssmgr.modules.Module):
 				args=(self.timer_handle_done,)
 			)
 			self.timer.start()
-			log.debug('mod_timer: Started new timer for %d milliseconds.', to_sleep)
+			self.log.debug('Started new timer for %d milliseconds.', to_sleep)
 
 	def timer_handle_done(self):
-		log.debug('mod_timer: Timer fired.')
+		self.log.debug('Timer fired.')
 		self.timer = None  # It exited cleanly, no need to cancel it.
 		xssmgr.state.idle_time = int(subprocess.check_output(['xprintidle']))
 		xssmgr.modules.update()

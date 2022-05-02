@@ -15,7 +15,7 @@ class Module:
 
 	# Constructor. You can specify module parameters as its signature.
 	def __init__(self):
-		pass
+		self.log = log.getChild('modules.' + self.name)
 
 	# Start function.  If called, stop() will also be called exactly once.
 	# All resource acquisition and initialization should happen here.

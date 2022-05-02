@@ -2,7 +2,6 @@
 # Changes the "locked" state.
 
 import xssmgr
-from xssmgr.logging import log
 
 # Additionally define a lock module, which can be added to an on_idle
 # hook to lock the screen when idle.
@@ -10,11 +9,11 @@ class LockModule(xssmgr.modules.Module):
 	name = 'lock'
 
 	def start(self):
-		log.debug('mod_lock: Locking (because the lock module is being enabled).')
+		self.log.debug('Locking (because the lock module is being enabled).')
 		xssmgr.lock()
 
 	def stop(self):
-		log.debug('mod_lock: Unlocking (because the lock module is being disabled).')
+		self.log.debug('Unlocking (because the lock module is being disabled).')
 		xssmgr.unlock()
 
 

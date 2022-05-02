@@ -9,7 +9,6 @@ import time
 
 import xssmgr
 import xssmgr.daemon
-from xssmgr.logging import log
 
 class I3LockModule(xssmgr.modules.Module):
 	# Our goals:
@@ -21,6 +20,8 @@ class I3LockModule(xssmgr.modules.Module):
 	name = 'i3lock'
 
 	def __init__(self, *args):
+		super().__init__()
+
 		# Parameters:
 
 		# Additional i3lock arguments.
@@ -41,7 +42,7 @@ class I3LockModule(xssmgr.modules.Module):
 			# the PID of the inner (forked) i3lock process, so for
 			# that we also need to know the PID of the outer
 			# process.
-			log.debug('mod_i3lock: Starting i3lock...')
+			self.log.debug('Starting i3lock...')
 			outer = subprocess.Popen(['i3lock', *self.i3lock_args], stdout=subprocess.PIPE)
 
 			# Wait for the outer process to exit.
@@ -64,17 +65,17 @@ class I3LockModule(xssmgr.modules.Module):
 			self.i3lock_reader_thread = threading.Thread(target=self.i3lock_reader, args=(outer.stdout, self.i3lock_inner_pid,))
 			self.i3lock_reader_thread.start()
 
-			log.debug('mod_i3lock: Started i3lock (PID %d).', self.i3lock_inner_pid)
+			self.log.debug('Started i3lock (PID %d).', self.i3lock_inner_pid)
 
 	def stop(self):
 		if self.i3lock_inner_pid is not None:
-			log.debug('mod_i3lock: Killing i3lock (PID %d)...', self.i3lock_inner_pid)
+			self.log.debug('Killing i3lock (PID %d)...', self.i3lock_inner_pid)
 
 			try:
 				os.kill(self.i3lock_inner_pid, signal.SIGTERM)
 				while True:
 					os.kill(self.i3lock_inner_pid, 0)  # Wait for exit
-					log.debug('mod_i3lock: Waiting...')
+					self.log.debug('Waiting...')
 					time.sleep(0.1)
 			except ProcessLookupError:
 				pass  # i3lock exited, continue
@@ -84,7 +85,7 @@ class I3LockModule(xssmgr.modules.Module):
 			self.i3lock_reader_thread.join()
 			self.i3lock_reader_thread = None
 
-			log.debug('mod_i3lock: Done.')
+			self.log.debug('Done.')
 
 	def i3lock_reader(self, f, pid):
 		f.read()
@@ -94,13 +95,13 @@ class I3LockModule(xssmgr.modules.Module):
 
 	def i3lock_handle_exit(self, pid):
 		if self.i3lock_inner_pid is None:
-			log.debug('mod_i3lock: Ignoring stale i3lock exit notification (not expecting one at this time, got PID %s).',
+			self.log.debug('Ignoring stale i3lock exit notification (not expecting one at this time, got PID %s).',
 				 pid)
 		elif pid != self.i3lock_inner_pid:
-			log.debug('mod_i3lock: Ignoring stale i3lock exit notification (wanted PID %d, got PID %s).',
+			self.log.debug('Ignoring stale i3lock exit notification (wanted PID %d, got PID %s).',
 				 self.i3lock_inner_pid, pid)
 		else:
-			log.security('mod_i3lock: i3lock exited, unlocking.')
+			self.log.security('i3lock exited, unlocking.')
 			# Unset these first, so we don't attempt to kill a
 			# nonexisting process when this module is stopped.
 			self.i3lock_inner_pid = None

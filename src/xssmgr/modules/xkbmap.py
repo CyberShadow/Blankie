@@ -7,12 +7,13 @@ import subprocess
 import xssmgr
 import xssmgr.config
 import xssmgr.fifo
-from xssmgr.logging import log
 
 class XKBMapModule(xssmgr.modules.Module):
 	name = 'xkbmap'
 
 	def __init__(self, *args):
+		super().__init__()
+
 		# Parameters:
 
 		# The keyboard configuration to use when locked.

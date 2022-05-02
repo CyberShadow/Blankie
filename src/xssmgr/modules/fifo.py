@@ -9,12 +9,13 @@ import threading
 
 import xssmgr
 import xssmgr.fifo
-from xssmgr.logging import log
 
 class FIFOModule(xssmgr.modules.Module):
 	name = 'fifo'
 
 	def __init__(self):
+		super().__init__()
+
 		# reader thread
 		self.fifo_reader_thread = None
 
@@ -25,7 +26,7 @@ class FIFOModule(xssmgr.modules.Module):
 		# Remove stale FIFO
 		with contextlib.suppress(FileNotFoundError):
 			os.remove(xssmgr.fifo.path)
-			log.debug('mod_fifo: Removed stale FIFO: %s', xssmgr.fifo.path)
+			self.log.debug('Removed stale FIFO: %s', xssmgr.fifo.path)
 
 		# Create the event funnel FIFO
 		os.mkfifo(xssmgr.fifo.path, mode=0o600)
@@ -48,46 +49,45 @@ class FIFOModule(xssmgr.modules.Module):
 				with open(xssmgr.fifo.path, 'rb') as f:
 					command_str = f.readline().rstrip(b'\n')
 			except FileNotFoundError:
-				log.debug('mod_fifo: FIFO gone - stopping.')
+				self.log.debug('FIFO gone - stopping.')
 				return
 
-			log.trace('mod_fifo: Got string: %s', command_str)
+			self.log.trace('Got string: %s', command_str)
 			command = eval(command_str)  # TODO
-			xssmgr.daemon.call(_run_command, *command)
+			xssmgr.daemon.call(self.fifo_run_command, *command)
 
-
-# Handle one command received from the FIFO.
-def _run_command(*args):
-	log.debug('mod_fifo: Got command: %s', str(args))
-	match args[0]:
-		case 'ping':
-			with open(args[1], 'wb') as f:
-				f.write(b'pong\n')
-		case 'status':
-			with open(args[1], 'w', encoding='utf-8') as f:
-				f.write('Currently locked: %s\n' % (xssmgr.state.locked,))
-				f.write('Running modules:\n')
-				f.write(''.join('- %s\n' % (m,) for m in xssmgr.modules.running_modules))
-				xssmgr.config.configurator.print_status(f)
-		case 'stop':
-			xssmgr.daemon.stop()
-		case 'reload':
-			xssmgr.config.reload()
-		case 'module': # Synchronously execute module subcommand, in the daemon process
-			xssmgr.modules.get(args[1]).fifo_command(*args[2:])
-		case 'lock':
-			log.security('mod_fifo: Locking the screen due to user request.')
-			if not xssmgr.state.locked:
-				xssmgr.lock()
-				with open(args[1], 'wb') as f: f.write(b'Locked.\n')
-			else:
-				with open(args[1], 'wb') as f: f.write(b'Already locked.\n')
-		case 'unlock':
-			log.security('mod_fifo: Unlocking the screen due to user request.')
-			if xssmgr.state.locked:
-				xssmgr.unlock()
-				with open(args[1], 'wb') as f: f.write(b'Unlocked.\n')
-			else:
-				with open(args[1], 'wb') as f: f.write(b'Already unlocked.\n')
-		case _:
-			log.warning('mod_fifo: Ignoring unknown daemon command: %s', str(args))
+	# Handle one command received from the FIFO.
+	def fifo_run_command(self, *args):
+		self.log.debug('Got command: %s', str(args))
+		match args[0]:
+			case 'ping':
+				with open(args[1], 'wb') as f:
+					f.write(b'pong\n')
+			case 'status':
+				with open(args[1], 'w', encoding='utf-8') as f:
+					f.write('Currently locked: %s\n' % (xssmgr.state.locked,))
+					f.write('Running modules:\n')
+					f.write(''.join('- %s\n' % (m,) for m in xssmgr.modules.running_modules))
+					xssmgr.config.configurator.print_status(f)
+			case 'stop':
+				xssmgr.daemon.stop()
+			case 'reload':
+				xssmgr.config.reload()
+			case 'module': # Synchronously execute module subcommand, in the daemon process
+				xssmgr.modules.get(args[1]).fifo_command(*args[2:])
+			case 'lock':
+				self.log.security('Locking the screen due to user request.')
+				if not xssmgr.state.locked:
+					xssmgr.lock()
+					with open(args[1], 'wb') as f: f.write(b'Locked.\n')
+				else:
+					with open(args[1], 'wb') as f: f.write(b'Already locked.\n')
+			case 'unlock':
+				self.log.security('Unlocking the screen due to user request.')
+				if xssmgr.state.locked:
+					xssmgr.unlock()
+					with open(args[1], 'wb') as f: f.write(b'Unlocked.\n')
+				else:
+					with open(args[1], 'wb') as f: f.write(b'Already unlocked.\n')
+			case _:
+				self.log.warning('Ignoring unknown daemon command: %s', str(args))

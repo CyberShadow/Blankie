@@ -9,6 +9,8 @@ class DPMSModule(xssmgr.modules.Module):
 	name = 'dpms'
 
 	def __init__(self, dpms_state = 'off'):
+		super().__init__()
+
 		# The DPMS state to set.  User configurable.
 		# Can be one of standby, suspend, or off.
 		# For most modern computer screens, the effect will be the same.

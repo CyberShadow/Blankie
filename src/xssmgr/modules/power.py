@@ -10,6 +10,8 @@ class PowerModule(xssmgr.modules.Module):
 	name = 'power'
 
 	def __init__(self, action = 'suspend'):
+		super().__init__()
+
 		# The action to execute.  Should be one of suspend, hibernate,
 		# hybrid-sleep, suspend-then-hibernate, or poweroff.
 		self.power_action = action
