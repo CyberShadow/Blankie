@@ -78,15 +78,15 @@ def _run_command(*args):
 			log('mod_fifo: Locking the screen due to user request.')
 			if not xssmgr.locked:
 				xssmgr.lock()
-				with open(args[1], 'wb') as f: f.write('Locked.\n')
+				with open(args[1], 'wb') as f: f.write(b'Locked.\n')
 			else:
-				with open(args[1], 'wb') as f: f.write('Already locked.\n')
+				with open(args[1], 'wb') as f: f.write(b'Already locked.\n')
 		case 'unlock':
 			log('mod_fifo: Unlocking the screen due to user request.')
 			if xssmgr.locked:
 				xssmgr.unlock()
-				with open(args[1], 'wb') as f: f.write('Unlocked.\n')
+				with open(args[1], 'wb') as f: f.write(b'Unlocked.\n')
 			else:
-				with open(args[1], 'wb') as f: f.write('Already unlocked.\n')
+				with open(args[1], 'wb') as f: f.write(b'Already unlocked.\n')
 		case _:
 			log('mod_fifo: Ignoring unknown daemon command: %s', str(args))
