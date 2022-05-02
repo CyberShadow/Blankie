@@ -27,8 +27,9 @@ class Module:
 
 	# Optional reconfiguration function.
 	# Should accept the same arguments as the constructor.
-	# Will be called when xssmgr wants to start and stop a pair of
-	# modules with the same name (differing only in parameters).
+	# Will be called on a running (started) module when xssmgr wants
+	# to stop and start a pair of modules with the same name
+	# (differing only in parameters).
 	# - If it returns True, the reconfiguration is considered to have
 	#   been successful, and the module is now considered to be an
 	#   instance corresponding to the new parameters.
