@@ -34,7 +34,7 @@ class EventLoop:
 		while not self.stopping or not self.queue.empty():
 			task = self.queue.get()
 			(func, args, kwargs) = task
-			log.debug('Calling %s with %s / %s', func, args, kwargs)
+			log.debug('Calling %r with %r / %r', func, args, kwargs)
 			func(*args, **kwargs)
 
 _event_loop = EventLoop()
@@ -51,14 +51,14 @@ def is_main_thread():
 
 # Reload the configuration file and reconfigure.
 def signal_stop(signalnum, _frame):
-	log.info('Got signal %s - asynchronously requesting quit.', signal.strsignal(signalnum))
+	log.info('Got signal %r - asynchronously requesting quit.', signal.strsignal(signalnum))
 	# Make sure that the logic runs from the main loop, and not an
 	# arbitrary place in the script.
 	call(stop)
 
 # Reload the configuration file and reconfigure.
 def sighup(signalnum, _frame):
-	log.info('Got signal %s - asynchronously requesting reload.', signal.strsignal(signalnum))
+	log.info('Got signal %r - asynchronously requesting reload.', signal.strsignal(signalnum))
 	# ditto
 	call(xssmgr.config.reload)
 
@@ -141,7 +141,7 @@ def start():
 		os.waitpid(daemon_pid, 0)
 		return 1
 
-	log.info('Daemon started on %s (PID %d).',
+	log.info('Daemon started on %r (PID %d).',
 		os.environ['DISPLAY'],
 		daemon_pid)
 	return 0
@@ -164,7 +164,7 @@ def stop():
 def stop_remote():
 	'''Connects to the daemon, tells it to stop, and waits for it to exit.'''
 	if not os.path.exists(pid_file):
-		log.critical('PID file \'%s\' does not exist - daemon not running?', pid_file)
+		log.critical('PID file %r does not exist - daemon not running?', pid_file)
 		sys.exit(2)
 
 	with open(pid_file, 'rb') as f:

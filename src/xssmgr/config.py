@@ -67,11 +67,11 @@ class Configurator:
 	def print_status(self, f):
 		'''Used in 'xssmgr status' command.'''
 		f.write('Configured on_start modules:\n')
-		f.write(''.join('- %s\n' % (spec,) for spec in self.on_start_modules))
+		f.write(''.join('- %r\n' % (spec,) for spec in self.on_start_modules))
 		f.write('Configured on_idle modules:\n')
-		f.write(''.join('- %d %s\n' % line for line in self.on_idle_modules))
+		f.write(''.join('- %d %r\n' % line for line in self.on_idle_modules))
 		f.write('Configured on_lock modules:\n')
-		f.write(''.join('- %s\n' % (spec,) for spec in self.on_lock_modules))
+		f.write(''.join('- %r\n' % (spec,) for spec in self.on_lock_modules))
 
 configurator = Configurator()
 xssmgr.modules.selectors['20-config'] = configurator.selector
@@ -91,7 +91,7 @@ def load():
 
 	for config_file in config_files:
 		if os.path.exists(config_file):
-			log.debug('Loading configuration from \'%s\'.', config_file)
+			log.debug('Loading configuration from %r.', config_file)
 
 			# https://docs.python.org/3/library/importlib.html#importing-a-source-file-directly
 			module_name = 'xssmgr_user_config'
@@ -102,7 +102,7 @@ def load():
 			return
 
 	log.warning('WARNING: No configuration file found.')
-	log.warning('Please check installation or create \'%s\'.', config_files[0])
+	log.warning('Please check installation or create %r.', config_files[0])
 
 # Re-evaluate the configuration and update our state to match.
 def reconfigure():

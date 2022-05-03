@@ -64,7 +64,7 @@ class XBacklightModule(xssmgr.modules.Module):
 			self.xbacklight_brightness = subprocess.check_output(['xbacklight', *self.xbacklight_args, '-getf']).rstrip(b'\n')
 			self.log.debug('Got original brightness (%s).', self.xbacklight_brightness)
 			args = ['xbacklight', *self.xbacklight_args, '-set', '0', *self.xbacklight_set_args]
-			self.log.debug('Running: %s', str(args))
+			self.log.debug('Running: %r', args)
 			self.xbacklight_process = subprocess.Popen(args, stdout=subprocess.PIPE)
 			self.log.debug('Started xbacklight (PID %d).', self.xbacklight_process.pid)
 			threading.Thread(target=self.xbacklight_reader, args=(self.xbacklight_process.stdout,)).start()

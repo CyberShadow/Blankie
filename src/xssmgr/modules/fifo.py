@@ -27,7 +27,7 @@ class FIFOModule(xssmgr.modules.Module):
 		# Remove stale FIFO
 		with contextlib.suppress(FileNotFoundError):
 			os.remove(xssmgr.fifo.path)
-			self.log.debug('Removed stale FIFO: %s', xssmgr.fifo.path)
+			self.log.debug('Removed stale FIFO: %r', xssmgr.fifo.path)
 
 		# Create the event funnel FIFO
 		os.mkfifo(xssmgr.fifo.path, mode=0o600)
@@ -58,13 +58,13 @@ class FIFOModule(xssmgr.modules.Module):
 				continue
 			command_str = command_str[:-1]
 
-			self.log.trace('Got string: %s', command_str)
+			self.log.trace('Got string: %r', command_str)
 			command = json.loads(command_str)
 			xssmgr.daemon.call(self.fifo_run_command, *command)
 
 	# Handle one command received from the FIFO.
 	def fifo_run_command(self, *args):
-		self.log.debug('Got command: %s', str(args))
+		self.log.debug('Got command: %r', args)
 		match args[0]:
 			case 'ping':
 				with open(args[1], 'wb') as f:
@@ -73,7 +73,7 @@ class FIFOModule(xssmgr.modules.Module):
 				with open(args[1], 'w', encoding='utf-8') as f:
 					f.write('Currently locked: %s\n' % (xssmgr.state.locked,))
 					f.write('Running modules:\n')
-					f.write(''.join('- %s\n' % (m,) for m in xssmgr.modules.running_modules))
+					f.write(''.join('- %r\n' % (m,) for m in xssmgr.modules.running_modules))
 					xssmgr.config.configurator.print_status(f)
 			case 'stop':
 				xssmgr.daemon.stop()
@@ -96,4 +96,4 @@ class FIFOModule(xssmgr.modules.Module):
 				else:
 					with open(args[1], 'wb') as f: f.write(b'Already unlocked.\n')
 			case _:
-				self.log.warning('Ignoring unknown daemon command: %s', str(args))
+				self.log.warning('Ignoring unknown daemon command: %r', args)

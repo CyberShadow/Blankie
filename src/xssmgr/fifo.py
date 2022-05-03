@@ -23,7 +23,7 @@ def notify(*args):
 
 	# We do this check after writing to avoid a TOCTOU.
 	if not stat.S_ISFIFO(os.stat(path).st_mode):
-		raise Exception('\'%s\' is not a FIFO - daemon not running?' % (path))
+		raise Exception('%r is not a FIFO - daemon not running?' % (path))
 
 # Send a line to the daemon, and wait for a reply
 def query(*args):

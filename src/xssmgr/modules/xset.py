@@ -20,7 +20,7 @@ class XSetModule(xssmgr.modules.Module):
 	def reconfigure(self, time):
 		self.xset_time = time
 		self.log.debug('Reconfiguring X screensaver to activate after %s seconds.',
-			 self.xset_time)
+					   self.xset_time)
 		subprocess.check_call(['xset', 's', str(self.xset_time), '0'])
 		return True
 
@@ -30,7 +30,7 @@ class XSetModule(xssmgr.modules.Module):
 		# the timer module will activate and sleep until the next idle
 		# hook.
 		self.log.debug('Configuring X screensaver to activate after %s seconds.',
-			 self.xset_time)
+					   self.xset_time)
 		subprocess.check_call(['xset', 's', str(self.xset_time), '0'])
 
 	def stop(self):

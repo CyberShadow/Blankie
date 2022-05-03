@@ -63,7 +63,7 @@ class XSSModule(xssmgr.modules.Module):
 		self.log.debug('xss exited (EOF).')
 
 	def xss_handle_event(self, *args):
-		self.log.debug('Got line from xss: %s', str(args))
+		self.log.debug('Got line from xss: %r', args)
 		match args[0]:
 			case b'notify':
 				(state, _kind, _forced) = args[1:4]
@@ -75,4 +75,4 @@ class XSSModule(xssmgr.modules.Module):
 				xssmgr.modules.update()
 
 			case _:
-				self.log.warning('Unknown line received from xss: %s', str(args))
+				self.log.warning('Unknown line received from xss: %r', args)

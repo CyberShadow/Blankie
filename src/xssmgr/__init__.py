@@ -155,7 +155,7 @@ Commands:
 			xssmgr.modules.cli_command(args[1:])
 
 		case _:
-			log.critical('Unknown command: %s', str(args))
+			log.critical('Unknown command: %r', args[0])
 			return 1
 
 	return 0

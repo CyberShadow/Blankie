@@ -72,7 +72,7 @@ def load_module(module_name):
 	for module_dir in module_dirs:
 		module_file = module_dir  + '/' + module_name + '.py'
 		if os.path.exists(module_file):
-			log.debug('Loading module \'%s\' from \'%s\'', module_name, module_file)
+			log.debug('Loading module %r from %r', module_name, module_file)
 			python_module_name = 'xssmgr.modules' + module_name
 
 			# https://docs.python.org/3/library/importlib.html#importing-a-source-file-directly
@@ -83,9 +83,9 @@ def load_module(module_name):
 
 			return
 
-	raise Exception('Module \'%s\' not found (looked in: %s)' % (
+	raise Exception('Module %r not found (looked in: %r)' % (
 		module_name,
-		str(module_dirs),
+		module_dirs,
 	))
 
 # Map from module specs to Module instances.
@@ -98,12 +98,12 @@ def get(module_spec):
 	module_name = module_spec[0]
 	module_classes = [c for c in Module.__subclasses__() if c.name == module_name]
 	if len(module_classes) == 0:
-		log.debug('Auto-loading module \'%s\'', module_name)
+		log.debug('Auto-loading module %r', module_name)
 		load_module(module_name)
 		module_classes = [c for c in Module.__subclasses__() if c.name == module_name]
 
-	assert len(module_classes) > 0, "No module class defined with name == '%s'" % (module_name,)
-	assert len(module_classes) == 1, "More than one module class defined with name == '%s'" % (module_name,)
+	assert len(module_classes) > 0, 'No module class defined with name == %r' % (module_name,)
+	assert len(module_classes) == 1, 'More than one module class defined with name == %r' % (module_name,)
 	module_class = module_classes[0]
 
 	# Instantiate
@@ -139,7 +139,7 @@ def start_stop_modules():
 							running_modules[i] = wanted_module
 							del module_instances[running_module]
 							module_instances[wanted_module] = module
-							log.debug('Reconfigured module %s from %s to %s.',
+							log.debug('Reconfigured module %r from %r to %r.',
 								 wanted_module[0], running_module[1:], wanted_module[1:])
 							return True  # Keep going
 
@@ -148,7 +148,7 @@ def start_stop_modules():
 		for i, running_module in reversed(list(enumerate(running_modules))):
 			if running_module not in wanted_modules:
 				del running_modules[i]
-				log.debug('Stopping module %s', str(running_module))
+				log.debug('Stopping module %r', running_module)
 				# It is important that, in case of an error, we revert
 				# back to the original state insofar as possible.
 				# This means that an error in one module should not cause
@@ -157,20 +157,20 @@ def start_stop_modules():
 				try:
 					module.stop()
 				except Exception:
-					log.error('Error when attempting to stop module %s:', str(running_module))
+					log.error('Error when attempting to stop module %r:', str(running_module))
 					traceback.print_exc()
 					errors.append(running_module)
 					return True
-				log.debug('Stopped module %s', str(running_module))
+				log.debug('Stopped module %r', running_module)
 				return True  # Keep going
 
 		# 3. Start modules which we now want to be running.
 		for wanted_module in wanted_modules:
 			if wanted_module not in running_modules:
 				running_modules.append(wanted_module)
-				log.debug('Starting module: %s', str(wanted_module))
+				log.debug('Starting module: %r', wanted_module)
 				get(wanted_module).start()
-				log.debug('Started module: %s', str(wanted_module))
+				log.debug('Started module: %r', wanted_module)
 				return True  # Keep going
 
 		# If we reached this point, there is no more work to do.
@@ -198,7 +198,7 @@ def update():
 
 	for key in sorted(selectors.keys()):
 		selector = selectors[key]
-		log.trace('Calling module selector: %s', selector)
+		log.trace('Calling module selector: %r', selector)
 		selector(wanted_modules)
 
 	# 2. Start/stop modules accordingly.

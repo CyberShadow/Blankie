@@ -95,10 +95,10 @@ class I3LockModule(xssmgr.modules.Module):
 
 	def i3lock_handle_exit(self, pid):
 		if self.i3lock_inner_pid is None:
-			self.log.debug('Ignoring stale i3lock exit notification (not expecting one at this time, got PID %s).',
+			self.log.debug('Ignoring stale i3lock exit notification (not expecting one at this time, got PID %r).',
 				 pid)
 		elif pid != self.i3lock_inner_pid:
-			self.log.debug('Ignoring stale i3lock exit notification (wanted PID %d, got PID %s).',
+			self.log.debug('Ignoring stale i3lock exit notification (wanted PID %d, got PID %r).',
 				 self.i3lock_inner_pid, pid)
 		else:
 			self.log.security('i3lock exited, unlocking.')
