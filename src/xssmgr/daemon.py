@@ -50,10 +50,16 @@ def is_main_thread():
 
 
 # Reload the configuration file and reconfigure.
-def sighup(_signal, _frame):
-	log.info('Got SIGHUP - asynchronously requesting reload.')
+def signal_stop(signalnum, _frame):
+	log.info('Got signal %s - asynchronously requesting quit.', signal.strsignal(signalnum))
 	# Make sure that the logic runs from the main loop, and not an
 	# arbitrary place in the script.
+	call(stop)
+
+# Reload the configuration file and reconfigure.
+def sighup(signalnum, _frame):
+	log.info('Got signal %s - asynchronously requesting reload.', signal.strsignal(signalnum))
+	# ditto
 	call(xssmgr.config.reload)
 
 
@@ -91,6 +97,10 @@ def start():
 	daemon_pid = os.fork()
 	if daemon_pid == 0:
 		# Inside the forked process: set up and run the daemon.
+
+		# Stop gracefully when receiving a SIGINT/SIGTERM.
+		signal.signal(signal.SIGINT, signal_stop)
+		signal.signal(signal.SIGTERM, signal_stop)
 
 		# Reload the configuration when receiving a SIGHUP.
 		signal.signal(signal.SIGHUP, sighup)
