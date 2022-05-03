@@ -47,10 +47,15 @@ class FIFOModule(xssmgr.modules.Module):
 		while True:
 			try:
 				with open(xssmgr.fifo.path, 'rb') as f:
-					command_str = f.readline().rstrip(b'\n')
+					command_str = f.readline()
 			except FileNotFoundError:
 				self.log.debug('FIFO gone - stopping.')
 				return
+
+			if not command_str.endswith(b'\n'):
+				self.log.warning('Received unterminated command: %r', command_str)
+				continue
+			command_str = command_str[:-1]
 
 			self.log.trace('Got string: %s', command_str)
 			command = eval(command_str)  # TODO
