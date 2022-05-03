@@ -179,7 +179,7 @@ def start_stop_modules():
 	while do_one_module():
 		pass  # Keep going
 
-	if len(errors):
+	if errors:
 		raise xssmgr.UserError('Failed to stop some modules.')
 
 	log.debug('Modules are synchronized.')
