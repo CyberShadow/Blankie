@@ -2,6 +2,7 @@
 
 import importlib
 import os
+import shlex
 import sys
 import traceback
 
@@ -202,3 +203,10 @@ def update():
 
 	# 2. Start/stop modules accordingly.
 	start_stop_modules()
+
+def cli_command(module_spec_str, *args):
+	# Synchronously instantiate a module and execute a module
+	# subcommand, outside the daemon process.
+	module_spec = shlex.split(module_spec_str)
+
+	xssmgr.modules.get(module_spec).cli_command(args)

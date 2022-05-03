@@ -152,12 +152,7 @@ Commands:
 
 		# Internal commands:
 		case 'module':
-			# Synchronously instantiate a module and execute a module
-			# subcommand, outside the daemon process.
-			module_spec_str = args[1]
-			module_spec = eval(module_spec_str)  # TODO
-
-			xssmgr.modules.get(module_spec).cli_command(args[2:])
+			xssmgr.modules.cli_command(args[1:])
 
 		case _:
 			log.critical('Unknown command: %s', str(args))
