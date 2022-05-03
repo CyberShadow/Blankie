@@ -4,6 +4,7 @@
 # "xssmgr status".
 
 import contextlib
+import json
 import os
 import threading
 
@@ -58,7 +59,7 @@ class FIFOModule(xssmgr.modules.Module):
 			command_str = command_str[:-1]
 
 			self.log.trace('Got string: %s', command_str)
-			command = eval(command_str)  # TODO
+			command = json.loads(command_str)
 			xssmgr.daemon.call(self.fifo_run_command, *command)
 
 	# Handle one command received from the FIFO.

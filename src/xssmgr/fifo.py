@@ -2,6 +2,7 @@
 # The daemon will start a FIFO (see the 'fifo' module) which allows it
 # to receive commands from other processes.
 
+import json
 import os
 import stat
 
@@ -15,7 +16,7 @@ path = os.environ.setdefault('XSSMRG_FIFO', xssmgr.run_dir + '/daemon.fifo')
 
 # Send a line to the daemon event loop
 def notify(*args):
-	message = bytes(str(args) + '\n', 'utf-8')
+	message = bytes(json.dumps(args) + '\n', 'utf-8')
 	# Send the message in one write.
 	with open(path, 'wb') as f:
 		f.write(message)
