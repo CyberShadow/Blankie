@@ -90,6 +90,15 @@ def unlock():
 	xssmgr.config.reconfigure()
 
 # -----------------------------------------------------------------------------
+# Exceptions
+
+# Represents an expected failure mode, which is unlikely to be due to
+# a bug in xssmgr.  In this case, we do not need to print an exception
+# stack trace; just print the error message and quit.
+class UserError(Exception):
+	pass
+
+# -----------------------------------------------------------------------------
 # Import xssmgr modules
 # Placed after the declarations above, so that they can be used by the
 # imported modules.
@@ -134,28 +143,33 @@ Commands:
 ''')
 		return 2
 
-	os.makedirs(run_dir, exist_ok=True)
-	xssmgr.config.load()
+	try:
+		os.makedirs(run_dir, exist_ok=True)
+		xssmgr.config.load()
 
-	match args[0]:
-		case 'start':
-			return xssmgr.daemon.start()
+		match args[0]:
+			case 'start':
+				return xssmgr.daemon.start()
 
-		case 'stop':
-			xssmgr.daemon.stop_remote()
+			case 'stop':
+				xssmgr.daemon.stop_remote()
 
-		case 'reload':
-			xssmgr.fifo.notify(*args)
+			case 'reload':
+				xssmgr.fifo.notify(*args)
 
-		case 'status' | 'lock' | 'unlock':
-			sys.stdout.buffer.write(xssmgr.fifo.query(*args))
+			case 'status' | 'lock' | 'unlock':
+				sys.stdout.buffer.write(xssmgr.fifo.query(*args))
 
-		# Internal commands:
-		case 'module':
-			xssmgr.modules.cli_command(args[1:])
+			# Internal commands:
+			case 'module':
+				xssmgr.modules.cli_command(args[1:])
 
-		case _:
-			log.critical('Unknown command: %r', args[0])
-			return 1
+			case _:
+				log.critical('Unknown command: %r', args[0])
+				return 1
 
-	return 0
+		return 0
+
+	except UserError as e:
+		log.critical('Fatal error: %s', e)
+		return 1

@@ -83,7 +83,7 @@ def load_module(module_name):
 
 			return
 
-	raise Exception('Module %r not found (looked in: %r)' % (
+	raise xssmgr.UserError('Module %r not found (looked in: %r)' % (
 		module_name,
 		module_dirs,
 	))
@@ -180,7 +180,7 @@ def start_stop_modules():
 		pass  # Keep going
 
 	if len(errors):
-		raise Exception('Failed to stop some modules.')
+		raise xssmgr.UserError('Failed to stop some modules.')
 
 	log.debug('Modules are synchronized.')
 

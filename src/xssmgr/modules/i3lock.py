@@ -49,7 +49,7 @@ class I3LockModule(xssmgr.modules.Module):
 			# This signals that i3lock initialized (hopefully successfully).
 			outer.wait()
 			if outer.returncode != 0:
-				raise Exception('mod_i3lock: i3lock failed to start!')
+				raise xssmgr.UserError('mod_i3lock: i3lock failed to start!')
 
 			# Find the inner process.
 			p = subprocess.check_output(['ps', '--ppid', str(outer.pid), '-C', 'i3lock', '-o', 'pid'])
@@ -58,7 +58,7 @@ class I3LockModule(xssmgr.modules.Module):
 			try:
 				os.kill(self.i3lock_inner_pid, 0)
 			except ProcessLookupError:
-				raise Exception('mod_i3lock: Failed to find the PID of the forked i3lock process.')
+				raise xssmgr.UserError('mod_i3lock: Failed to find the PID of the forked i3lock process.')
 
 			# Create a thread waiting for EOF from the pipe, to know when i3lock exits.
 			# (We use this method to avoid polling with e.g. `kill -0`.)

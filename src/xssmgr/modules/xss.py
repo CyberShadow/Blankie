@@ -36,7 +36,7 @@ class XSSModule(xssmgr.modules.Module):
 				self.xss_process.terminate()
 				self.xss_process.communicate()
 				self.xss_process = None
-				raise Exception('mod_xss: Failed to start xss.')
+				raise xssmgr.UserError('mod_xss: Failed to start xss.')
 
 			# Start event reader task
 			self.xss_reader_thread = threading.Thread(target=self.xss_reader, args=(self.xss_process.stdout,))

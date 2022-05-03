@@ -32,7 +32,7 @@ class Configurator:
 	def on_idle(self, idle_seconds, module, *parameters):
 		'''Called from the user's configuration to register an on-idle module.'''
 		if not isinstance(idle_seconds, int) or idle_seconds <= 0:
-			raise Exception('Invalid idle time - must be a positive integer')
+			raise xssmgr.UserError('Invalid idle time - must be a positive integer')
 		self.on_idle_modules.append((idle_seconds, (module, *parameters)))
 
 	def selector(self, wanted_modules):
