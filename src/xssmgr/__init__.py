@@ -132,14 +132,14 @@ Commands:
   lock         Lock the X session now.
   unlock       Unlock the X session now.
 ''')
-		sys.exit(2)
+		return 2
 
 	os.makedirs(run_dir, exist_ok=True)
 	xssmgr.config.load()
 
 	match args[0]:
 		case 'start':
-			xssmgr.daemon.start()
+			return xssmgr.daemon.start()
 
 		case 'stop':
 			xssmgr.daemon.stop_remote()
@@ -161,4 +161,6 @@ Commands:
 
 		case _:
 			log.critical('Unknown command: %s', str(args))
-			sys.exit(1)
+			return 1
+
+	return 0

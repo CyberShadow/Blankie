@@ -127,6 +127,8 @@ def start():
 
 		# Event loop exited gracefully.
 		log.debug('Daemon is exiting.')
+
+		# Ensure the fork does not continue into the parent's code.
 		sys.exit(0)
 
 	# Clear our exit trap, as it should now run in the main loop subshell.
@@ -134,14 +136,15 @@ def start():
 
 	# Wait for the daemon to finish starting up.
 	ready_w.close()
-	if ready_r.read() == b'ok':
-		log.info('Daemon started on %s (PID %d).',
-			os.environ['DISPLAY'],
-			daemon_pid)
-	else:
+	if ready_r.read() != b'ok':
 		log.critical('Daemon start-up failed.')
 		os.waitpid(daemon_pid, 0)
-		sys.exit(1)
+		return 1
+
+	log.info('Daemon started on %s (PID %d).',
+		os.environ['DISPLAY'],
+		daemon_pid)
+	return 0
 
 def stop():
 	log.info('Daemon is stopping...')
