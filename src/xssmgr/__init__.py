@@ -61,31 +61,6 @@ class State:
 state = State()
 
 # -----------------------------------------------------------------------------
-# Import xssmgr modules
-# Placed after the variable declarations above, so that they can be
-# used by the imported modules.
-
-import xssmgr.config
-import xssmgr.daemon
-import xssmgr.fifo
-import xssmgr.modules
-from xssmgr.logging import log
-
-# -----------------------------------------------------------------------------
-# Core functionality: run core modules
-
-def core_selector(wanted_modules):
-	wanted_modules.extend([
-		# Receives commands / events from other processes.
-		('fifo', ),
-
-		# Receives idle / unidle events.
-		('xss', ),
-	])
-
-xssmgr.modules.selectors['10-core'] = core_selector
-
-# -----------------------------------------------------------------------------
 # Locking
 
 # Note: the lock state can be affected by multiple sources - not just
@@ -113,6 +88,31 @@ def unlock():
 	unlock_notification_fds = []
 
 	xssmgr.config.reconfigure()
+
+# -----------------------------------------------------------------------------
+# Import xssmgr modules
+# Placed after the declarations above, so that they can be used by the
+# imported modules.
+
+import xssmgr.config
+import xssmgr.daemon
+import xssmgr.fifo
+import xssmgr.modules
+from xssmgr.logging import log
+
+# -----------------------------------------------------------------------------
+# Core functionality: run core modules
+
+def core_selector(wanted_modules):
+	wanted_modules.extend([
+		# Receives commands / events from other processes.
+		('fifo', ),
+
+		# Receives idle / unidle events.
+		('xss', ),
+	])
+
+xssmgr.modules.selectors['10-core'] = core_selector
 
 # -----------------------------------------------------------------------------
 # Entry point
