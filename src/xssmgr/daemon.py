@@ -117,7 +117,7 @@ def start():
 
 		# Event loop exited gracefully.
 		log.debug('Daemon is exiting.')
-		sys.exit(xssmgr.exit_code)
+		sys.exit(0)
 
 	# Clear our exit trap, as it should now run in the main loop subshell.
 	atexit.unregister(shutdown)

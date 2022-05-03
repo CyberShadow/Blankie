@@ -34,11 +34,6 @@ if is_source_checkout:
 else:
 	lib_dir = '/usr/lib/xssmgr'
 
-# Exit code we should use when exiting.
-# Can be set to non-zero to indicate that a non-fatal error occurred
-# somewhere.
-exit_code = 0
-
 # -----------------------------------------------------------------------------
 # Current state
 
@@ -167,5 +162,3 @@ Commands:
 		case _:
 			log.critical('Unknown command: %s', str(args))
 			sys.exit(1)
-
-	sys.exit(exit_code)

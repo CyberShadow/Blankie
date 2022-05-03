@@ -122,6 +122,8 @@ def start_stop_modules():
 	# be done.  Note that wanted_modules may change "under our feet"
 	# in response to a module starting or stopping.
 
+	errors = []
+
 	# Use a local function to break out of deep loops.
 	def do_one_module():
 		# 1. Reconfigure modules which can be reconfigured.
@@ -156,7 +158,8 @@ def start_stop_modules():
 				except Exception:
 					log.error('Error when attempting to stop module %s:', str(running_module))
 					traceback.print_exc()
-					xssmgr.exit_code = 1
+					errors.append(running_module)
+					return True
 				log.debug('Stopped module %s', str(running_module))
 				return True  # Keep going
 
@@ -174,6 +177,9 @@ def start_stop_modules():
 
 	while do_one_module():
 		pass  # Keep going
+
+	if len(errors):
+		raise Exception('Failed to stop some modules.')
 
 	log.debug('Modules are synchronized.')
 
