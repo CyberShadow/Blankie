@@ -83,9 +83,6 @@ class XBacklightModule(xssmgr.modules.Module):
 			self.xbacklight_brightness = None
 
 	def xbacklight_reader(self, f):
-		# Get notified when it exits, so we can forget the PID
-		# (so we later don't kill an innocent process due to
-		# PID reuse).
 		f.read() # Wait for EOF
 		xssmgr.daemon.call(self.xbacklight_handle_exit)
 
