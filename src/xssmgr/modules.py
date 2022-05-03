@@ -201,6 +201,9 @@ def update():
 		log.trace('Calling module selector: %r', selector)
 		selector(wanted_modules)
 
+	# Deduplicate
+	wanted_modules = list(dict.fromkeys(wanted_modules))
+
 	# 2. Start/stop modules accordingly.
 	start_stop_modules()
 
