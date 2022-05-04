@@ -45,8 +45,8 @@ class Module:
 	def cli_command(self, *_args):
 		raise NotImplementedError()
 
-	# Handle a message received from the FIFO.
-	def fifo_command(self, *_args):
+	# Handle a message received from the UNIX socket.
+	def server_command(self, *_args):
 		raise NotImplementedError()
 
 # Module search path.  Populated in load_config.

@@ -105,7 +105,7 @@ class UserError(Exception):
 
 import xssmgr.config
 import xssmgr.daemon
-import xssmgr.fifo
+import xssmgr.server
 import xssmgr.modules
 from xssmgr.logging import log
 
@@ -115,7 +115,7 @@ from xssmgr.logging import log
 def core_selector(wanted_modules):
 	wanted_modules.extend([
 		# Receives commands / events from other processes.
-		('fifo', ),
+		('server', ),
 
 		# Receives idle / unidle events.
 		('xss', ),
@@ -155,10 +155,10 @@ Commands:
 				xssmgr.daemon.stop_remote()
 
 			case 'reload':
-				xssmgr.fifo.notify(*args)
+				xssmgr.server.notify(*args)
 
 			case 'status' | 'lock' | 'unlock':
-				sys.stdout.buffer.write(xssmgr.fifo.query(*args))
+				sys.stdout.buffer.write(xssmgr.server.query(*args))
 
 			# Internal commands:
 			case 'module':

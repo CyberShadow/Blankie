@@ -6,7 +6,6 @@ import subprocess
 
 import xssmgr
 import xssmgr.config
-import xssmgr.fifo
 
 class XKBMapModule(xssmgr.modules.Module):
 	name = 'xkbmap'

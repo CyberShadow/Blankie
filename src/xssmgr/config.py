@@ -66,12 +66,12 @@ class Configurator:
 
 	def print_status(self, f):
 		'''Used in 'xssmgr status' command.'''
-		f.write('Configured on_start modules:\n')
-		f.write(''.join('- %r\n' % (spec,) for spec in self.on_start_modules))
-		f.write('Configured on_idle modules:\n')
-		f.write(''.join('- %d %r\n' % line for line in self.on_idle_modules))
-		f.write('Configured on_lock modules:\n')
-		f.write(''.join('- %r\n' % (spec,) for spec in self.on_lock_modules))
+		f.write(b'Configured on_start modules:\n')
+		f.write(b''.join(b'- %r\n' % (spec,) for spec in self.on_start_modules))
+		f.write(b'Configured on_idle modules:\n')
+		f.write(b''.join(b'- %d %r\n' % line for line in self.on_idle_modules))
+		f.write(b'Configured on_lock modules:\n')
+		f.write(b''.join(b'- %r\n' % (spec,) for spec in self.on_lock_modules))
 
 configurator = Configurator()
 xssmgr.modules.selectors['20-config'] = configurator.selector

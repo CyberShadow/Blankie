@@ -10,7 +10,7 @@ import threading
 import time
 
 import xssmgr
-import xssmgr.fifo
+import xssmgr.server
 from xssmgr.logging import log
 
 # Daemon's PID file.
@@ -170,7 +170,7 @@ def stop_remote():
 	with open(pid_file, 'rb') as f:
 		daemon_pid = int(f.read())
 	log.debug('Stopping daemon (PID %d)...', daemon_pid)
-	xssmgr.fifo.notify('stop')
+	xssmgr.server.notify('stop')
 	while True:
 		try:
 			os.kill(daemon_pid, 0)
