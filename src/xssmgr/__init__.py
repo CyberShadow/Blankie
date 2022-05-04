@@ -8,9 +8,6 @@ import sys
 # -----------------------------------------------------------------------------
 # External globals - made available to the configuration and external processes
 
-# Path to the xssmgr script.
-os.environ['XSSMGR'] = sys.argv[0]
-
 # This session's runtime directory.  Modules may put state here.
 run_dir = os.environ.setdefault(
 	'XSSMGR_RUN_DIR',
