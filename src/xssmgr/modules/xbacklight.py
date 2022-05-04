@@ -48,6 +48,9 @@ class XBacklightModule(xssmgr.modules.Module):
 		# Popen of any running xbacklight process.
 		self.xbacklight_process = None
 
+		# Reader thread
+		self.xbacklight_reader_thread = None
+
 		# The original screen brightness.
 		self.xbacklight_brightness = None
 
@@ -67,14 +70,20 @@ class XBacklightModule(xssmgr.modules.Module):
 			self.log.debug('Running: %r', args)
 			self.xbacklight_process = subprocess.Popen(args, stdout=subprocess.PIPE)
 			self.log.debug('Started xbacklight (PID %d).', self.xbacklight_process.pid)
-			threading.Thread(target=self.xbacklight_reader, args=(self.xbacklight_process.stdout,)).start()
+			self.xbacklight_reader_thread = threading.Thread(target=self.xbacklight_reader, args=(self.xbacklight_process.stdout,))
+			self.xbacklight_reader_thread.start()
 
 	def stop(self):
 		if self.xbacklight_process is not None:
 			self.log.debug('Killing xbacklight (PID %d)...', self.xbacklight_process.pid)
+
 			self.xbacklight_process.terminate()
 			self.xbacklight_process.communicate()
 			self.xbacklight_process = None
+
+			self.xbacklight_reader_thread.join()
+			self.xbacklight_reader_thread = None
+
 			self.log.debug('Done.')
 
 		if self.xbacklight_brightness is not None:
