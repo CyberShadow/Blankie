@@ -108,7 +108,7 @@ def load():
 def reconfigure():
 	log.debug('Reconfiguring.')
 
-	# Reset settings before (re-)loading configuration file.
+	# Reset settings before (re-)evaluating the user configuration.
 	configurator.reset()
 
 	# Evaluate the user-defined configuration function.
