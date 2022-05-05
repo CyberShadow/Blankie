@@ -113,15 +113,17 @@ def get(module_spec):
 
 # Start or stop modules, synchronizing running_modules against
 # wanted_modules.
+# The contract this function fulfills is that when it returns,
+# running_modules matches wanted_modules.
 def start_stop_modules():
 	log.trace('Running modules:%s', ''.join('\n- ' + str(m) for m in running_modules))
 	log.trace('Wanted  modules:%s', ''.join('\n- ' + str(m) for m in wanted_modules))
 
 	# Because modules may themselves start or stop other modules when
-	# they are started or stopped, support recursion by performing one
-	# operation at a time, and looping until there is no work left to
-	# be done.  Note that wanted_modules may change "under our feet"
-	# in response to a module starting or stopping.
+	# they are started or stopped, support re-entrancy by performing
+	# one operation at a time, and looping until there is no work left
+	# to be done.  Note that wanted_modules may change "under our
+	# feet" in response to a module starting or stopping.
 
 	errors = []
 
@@ -171,6 +173,11 @@ def start_stop_modules():
 				log.debug('Starting module: %r', wanted_module)
 				get(wanted_module).start()
 				log.debug('Started module: %r', wanted_module)
+				# Put the module we just started at the end, so that
+				# any dependents are stopped after it:
+				if wanted_module in wanted_modules and wanted_module in running_modules:
+					running_modules.remove(wanted_module)
+					running_modules.append(wanted_module)
 				return True  # Keep going
 
 		# If we reached this point, there is no more work to do.
