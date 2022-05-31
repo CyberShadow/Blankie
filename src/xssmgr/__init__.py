@@ -40,6 +40,11 @@ class State:
 	# Whether we are currently idle (according to X / xss).
 	# Because xss is affected by X screen-saver inhibitors,
 	# this may be False even if xprintidle would produce a large number.
+
+	# More precisely, this is defined as follows: if this is False, we
+	# are guaranteed to receive an event (which will make this
+	# variable True) before the system actually becomes idle for
+	# longer than our first on_idle hook.
 	idle = False
 
 	# X server idle time (as provided by xprintidle), in milliseconds,
