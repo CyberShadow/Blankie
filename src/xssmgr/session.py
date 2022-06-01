@@ -1,7 +1,5 @@
 # xssmgr.session - session management
 
-import os
-
 import xssmgr
 from xssmgr.logging import log
 
@@ -121,10 +119,10 @@ class PerSessionModuleLauncher(xssmgr.module.Module):
 # Returns a module spec suitable for attaching to the invoking
 # process's session, or None.
 def get_session():
-	if 'DISPLAY' in os.environ:
-		import xssmgr.modules.session.x11
-		return (xssmgr.modules.session.x11.X11Session.name, os.environ['DISPLAY'])
-	return None
+	import xssmgr.modules.session.x11
+	return \
+		xssmgr.modules.session.x11.get_session() or \
+		None
 
 # Ask the xssmgr daemon to attach/detach to/from the given session that the
 # current process is running in.

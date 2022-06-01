@@ -46,3 +46,9 @@ class X11Session(xssmgr.session.Session):
 		return 'is idle: %s, idle time: %s' % (
 			self.idle, self.idle_time
 		)
+
+
+def get_session():
+	if 'DISPLAY' in os.environ:
+		return (X11Session.name, os.environ['DISPLAY'])
+	return None
