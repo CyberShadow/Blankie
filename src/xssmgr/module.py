@@ -70,7 +70,7 @@ selectors = {}
 
 def load_module(module_name):
 	for module_dir in module_dirs:
-		module_file = module_dir  + '/' + module_name + '.py'
+		module_file = module_dir  + '/' + module_name.replace('.', '/') + '.py'
 		if os.path.exists(module_file):
 			log.debug('Loading module %r from %r', module_name, module_file)
 			python_module_name = 'xssmgr.modules' + module_name
