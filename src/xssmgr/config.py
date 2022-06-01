@@ -62,7 +62,7 @@ class Configurator:
 		wanted_modules.extend(self.on_start_modules)
 
 		for (timeout, module_spec) in self.on_idle_modules:
-			if idle_time >= timeout * 1000:
+			if idle_time >= timeout:
 				wanted_modules.append(module_spec)
 
 	def print_status(self, f):

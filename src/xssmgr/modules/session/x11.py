@@ -22,7 +22,7 @@ class X11Session(xssmgr.session.Session):
 	# longer than our first on_idle hook.
 	idle = False
 
-	# X server idle time (as provided by xprintidle), in milliseconds
+	# X server idle time (as provided by xprintidle), in seconds
 	idle_time = -1
 
 	def __init__(self, display):
@@ -36,7 +36,7 @@ class X11Session(xssmgr.session.Session):
 			self.idle_time = int(subprocess.check_output(
 				['xprintidle'],
 				env=dict(os.environ, DISPLAY=self.display)
-			))
+			)) / 1000
 		return self.idle_time
 
 	def invalidate(self):

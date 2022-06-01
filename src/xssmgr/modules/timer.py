@@ -44,19 +44,18 @@ class TimerModule(xssmgr.module.Module):
 
 		next_time = math.inf
 		for timeout in self.timer_schedule:
-			timeout_ms = timeout * 1000
-			if idle_time < timeout_ms < next_time:
-				next_time = timeout_ms
+			if idle_time < timeout < next_time:
+				next_time = timeout
 
 		if next_time < math.inf:
 			to_sleep = next_time - idle_time + 1
 			self.timer = threading.Timer(
-				interval=to_sleep / 1000,
+				interval=to_sleep,
 				function=xssmgr.daemon.call,
 				args=(self.timer_handle_done,)
 			)
 			self.timer.start()
-			self.log.debug('Started new timer for %d milliseconds.', to_sleep)
+			self.log.debug('Started new timer for %s seconds.', to_sleep)
 
 	def timer_handle_done(self):
 		self.log.debug('Timer fired.')

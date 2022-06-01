@@ -17,7 +17,7 @@ from xssmgr.logging import log
 # module dependency and cleanup mechanisms.
 
 class Session(xssmgr.module.Module):
-	# Return this session's idle time in milliseconds.
+	# Return this session's idle time in seconds.
 	# If this session cannot, in its current state (i.e. until the
 	# next call to invalidate), become idle, no matter how much time
 	# will pass (e.g. due to a "wake-lock"), this can be indicated by
