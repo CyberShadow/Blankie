@@ -32,7 +32,7 @@ class UPowerModule(xssmgr.module.Module):
 			self.upower_process = subprocess.Popen(
 				['upower', '--monitor'],
 				stdout=subprocess.PIPE)
-			self.upower_reader_thread = threading.Thread(target=self.upower_reader, args=(self.upower_process.stdout))
+			self.upower_reader_thread = threading.Thread(target=self.upower_reader, args=(self.upower_process.stdout,))
 			self.upower_reader_thread.start()
 			self.log.debug('Started upower (PID %d).', self.upower_process.pid)
 
