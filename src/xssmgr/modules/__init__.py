@@ -96,11 +96,13 @@ def get(module_spec):
 		return module_instances[module_spec]
 
 	module_name = module_spec[0]
-	module_classes = [c for c in Module.__subclasses__() if c.name == module_name]
+	def search(p):
+		return ([p] if p.name == module_name else []) + sum((search(c) for c in p.__subclasses__()), start=[])
+	module_classes = search(Module)
 	if len(module_classes) == 0:
 		log.debug('Auto-loading module %r', module_name)
 		load_module(module_name)
-		module_classes = [c for c in Module.__subclasses__() if c.name == module_name]
+		module_classes = search(Module)
 
 	assert len(module_classes) > 0, 'No module class defined with name == %r' % (module_name,)
 	assert len(module_classes) == 1, 'More than one module class defined with name == %r' % (module_name,)

@@ -3,17 +3,21 @@
 # events from the X server.  Used to know when the system becomes or
 # stops being idle.
 
+import os
 import subprocess
 import threading
 
 import xssmgr
 import xssmgr.daemon
+import xssmgr.modules.session.x11
 
-class XSSModule(xssmgr.modules.Module):
-	name = 'xss'
+class XSSPerSessionModule(xssmgr.modules.Module):
+	name = 'internal-xss-session'
 
-	def __init__(self):
+	def __init__(self, session_spec):
 		super().__init__()
+		self.display = session_spec[1]
+		self.session = xssmgr.modules.get(session_spec)
 
 		# xss Popen object
 		self.xss_process = None
@@ -28,7 +32,8 @@ class XSSModule(xssmgr.modules.Module):
 		if self.xss_process is None:
 			self.xss_process = subprocess.Popen(
 				[xssmgr.lib_dir + '/xss'],
-				stdout = subprocess.PIPE
+				stdout = subprocess.PIPE,
+				env=dict(os.environ, DISPLAY=self.display),
 			)
 
 			if self.xss_process.stdout.readline() != b'init\n':
@@ -68,11 +73,17 @@ class XSSModule(xssmgr.modules.Module):
 			case b'notify':
 				(state, _kind, _forced) = args[1:4]
 				if state == b'off':
-					xssmgr.state.idle = False
+					self.session.idle = False
 				else:
-					xssmgr.state.idle = True
-				xssmgr.state.idle_time = int(subprocess.check_output(['xprintidle']))
+					self.session.idle = True
+				self.session.invalidate()
 				xssmgr.modules.update()
 
 			case _:
 				self.log.warning('Unknown line received from xss: %r', args)
+
+
+class XSSModule(xssmgr.sessions.PerSessionModuleLauncher):
+	name = 'xss'
+	per_session_name = XSSPerSessionModule.name
+	session_type = xssmgr.modules.session.x11.X11Session.name # 'session.x11'

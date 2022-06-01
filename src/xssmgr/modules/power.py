@@ -17,7 +17,7 @@ class PowerModule(xssmgr.modules.Module):
 		self.power_action = action
 
 	def start(self):
-		if xssmgr.state.idle_time == math.inf:
+		if xssmgr.get_idle_time() == math.inf:
 			# The system is already executing a power action.
 			return
 		subprocess.check_call(['systemctl', self.power_action])

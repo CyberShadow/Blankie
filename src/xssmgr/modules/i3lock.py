@@ -10,17 +10,18 @@ import time
 import xssmgr
 import xssmgr.daemon
 
-class I3LockModule(xssmgr.modules.Module):
+class I3LockPerSessionModule(xssmgr.modules.Module):
 	# Our goals:
 	# - Start i3lock when this module is started.
 	# - If i3lock fails to start (initialize), abort.
 	# - Stop (kill) i3lock, if it is running, when this module is stopped.
 	# - Exit the locked state, stopping other on_lock modules, when i3lock exits.
 
-	name = 'i3lock'
+	name = 'internal-i3lock-session'
 
-	def __init__(self, *args):
+	def __init__(self, session_spec, *args):
 		super().__init__()
+		self.display = session_spec[1]
 
 		# Parameters:
 
@@ -43,7 +44,9 @@ class I3LockModule(xssmgr.modules.Module):
 			# that we also need to know the PID of the outer
 			# process.
 			self.log.debug('Starting i3lock...')
-			outer = subprocess.Popen(['i3lock', *self.i3lock_args], stdout=subprocess.PIPE)
+			outer = subprocess.Popen(['i3lock', *self.i3lock_args],
+									 stdout=subprocess.PIPE,
+									 env=dict(os.environ, DISPLAY=self.display))
 
 			# Wait for the outer process to exit.
 			# This signals that i3lock initialized (hopefully successfully).
@@ -106,3 +109,9 @@ class I3LockModule(xssmgr.modules.Module):
 			# nonexisting process when this module is stopped.
 			self.i3lock_inner_pid = None
 			xssmgr.unlock()
+
+
+class I3LockModule(xssmgr.sessions.PerSessionModuleLauncher):
+	name = 'i3lock'
+	per_session_name = I3LockPerSessionModule.name
+	session_type = xssmgr.modules.session.x11.X11Session.name # 'session.x11'

@@ -3,16 +3,18 @@
 # configure when xss receives notifications about the system becoming
 # idle.
 
+import os
 import subprocess
 
 import xssmgr
 import xssmgr.config
 
-class XSetModule(xssmgr.modules.Module):
-	name = 'xset'
+class XSetPerSessionModule(xssmgr.modules.Module):
+	name = 'internal-xset-session'
 
-	def __init__(self, time):
+	def __init__(self, session_spec, time):
 		super().__init__()
+		self.display = session_spec[1]
 
 		# Idle time in seconds of the first idle hook.
 		self.xset_time = time
@@ -21,7 +23,8 @@ class XSetModule(xssmgr.modules.Module):
 		self.xset_time = time
 		self.log.debug('Reconfiguring X screensaver to activate after %s seconds.',
 					   self.xset_time)
-		subprocess.check_call(['xset', 's', str(self.xset_time), '0'])
+		subprocess.check_call(['xset', 's', str(self.xset_time), '0'],
+							  env=dict(os.environ, DISPLAY=self.display))
 		return True
 
 	def start(self):
@@ -31,8 +34,16 @@ class XSetModule(xssmgr.modules.Module):
 		# hook.
 		self.log.debug('Configuring X screensaver to activate after %s seconds.',
 					   self.xset_time)
-		subprocess.check_call(['xset', 's', str(self.xset_time), '0'])
+		subprocess.check_call(['xset', 's', str(self.xset_time), '0'],
+							  env=dict(os.environ, DISPLAY=self.display))
 
 	def stop(self):
 		self.log.debug('Disabling X screensaver.')
-		subprocess.check_call(['xset', 's', 'off'])
+		subprocess.check_call(['xset', 's', 'off'],
+							  env=dict(os.environ, DISPLAY=self.display))
+
+
+class XSetModule(xssmgr.sessions.PerSessionModuleLauncher):
+	name = 'xset'
+	per_session_name = XSetPerSessionModule.name
+	session_type = xssmgr.modules.session.x11.X11Session.name # 'session.x11'

@@ -141,9 +141,7 @@ def start():
 		os.waitpid(daemon_pid, 0)
 		return 1
 
-	log.info('Daemon started on %r (PID %d).',
-		os.environ['DISPLAY'],
-		daemon_pid)
+	log.info('Daemon started (PID %d).', daemon_pid)
 	return 0
 
 def stop():

@@ -2,6 +2,7 @@
 # Receives events and manages X screen saver settings, power,
 # and the screen locker.
 
+import math
 import os
 import sys
 
@@ -14,7 +15,7 @@ run_dir = os.environ.setdefault(
 	os.getenv(
 		'XDG_RUNTIME_DIR',
 		'/tmp/' + str(os.getuid())
-	) + '/xssmgr-' + os.environ['DISPLAY']
+	) + '/xssmgr'
 )
 
 # -----------------------------------------------------------------------------
@@ -37,30 +38,20 @@ else:
 # These encode the current state of the system, which is used to
 # select which modules should be running.
 class State:
-	# Whether we are currently idle (according to X / xss).
-	# Because xss is affected by X screen-saver inhibitors,
-	# this may be False even if xprintidle would produce a large number.
-
-	# More precisely, this is defined as follows: if this is False, we
-	# are guaranteed to receive an event (which will make this
-	# variable True) before the system actually becomes idle for
-	# longer than our first on_idle hook.
-	idle = False
-
-	# X server idle time (as provided by xprintidle), in milliseconds,
-	# or math.inf
-	idle_time = 0
-
 	# Do we want the lock screen to be active right now?
 	# Modified by the lock module, as well as the lock/unlock commands.
 	locked = False
 
 	def __str__(self):
-		return 'is locked: %s, is idle: %s, idle time: %s' % (
-			self.locked, self.idle, self.idle_time
+		return 'is locked: %s' % (
+			self.locked
 		)
 
 state = State()
+
+def get_idle_time():
+	return min((session.get_idle_time() for session in xssmgr.sessions.get_sessions()),
+			   default=-math.inf)
 
 # -----------------------------------------------------------------------------
 # Locking
@@ -80,7 +71,10 @@ unlock_notification_fds = []
 
 def unlock():
 	state.locked = False
-	state.idle_time = 0  # Ensure we don't try to immediately relock / go to sleep
+
+	# Ensure we don't try to immediately relock / go to sleep
+	for session in xssmgr.sessions.get_sessions():
+		session.invalidate()
 
 	# Notify of unlocks.
 	global unlock_notification_fds
@@ -109,6 +103,7 @@ import xssmgr.config
 import xssmgr.daemon
 import xssmgr.server
 import xssmgr.modules
+import xssmgr.sessions
 from xssmgr.logging import log
 
 # -----------------------------------------------------------------------------
@@ -161,6 +156,9 @@ Commands:
 
 			case 'status' | 'lock' | 'unlock':
 				sys.stdout.buffer.write(xssmgr.server.query(*args))
+
+			case 'attach' | 'detach':
+				xssmgr.sessions.remote_attach_or_detach(args[0] == 'attach')
 
 			# Internal commands:
 			case 'module':

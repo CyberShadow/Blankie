@@ -2,16 +2,18 @@
 # Configures the XKB map as requested when activating the lock screen,
 # and restores previous settings when deactivating.
 
+import os
 import subprocess
 
 import xssmgr
 import xssmgr.config
 
-class XKBMapModule(xssmgr.modules.Module):
-	name = 'xkbmap'
+class XKBMapPerSessionModule(xssmgr.modules.Module):
+	name = 'internal-xkbmap-session'
 
-	def __init__(self, *args):
+	def __init__(self, session_spec, *args):
 		super().__init__()
+		self.display = session_spec[1]
 
 		# Parameters:
 
@@ -32,8 +34,16 @@ class XKBMapModule(xssmgr.modules.Module):
 		o = [arg for line in o for arg in line]
 		self.xkbmap_state = o
 		# Configure the locked state.
-		subprocess.check_call(['setxkbmap', *self.xkbmap_args])
+		subprocess.check_call(['setxkbmap', *self.xkbmap_args],
+							  env=dict(os.environ, DISPLAY=self.display))
 
 	def stop(self):
 		# Restore the old state.
-		subprocess.check_call(['setxkbmap', *self.xkbmap_state])
+		subprocess.check_call(['setxkbmap', *self.xkbmap_state],
+							  env=dict(os.environ, DISPLAY=self.display))
+
+
+class XKBMapModule(xssmgr.sessions.PerSessionModuleLauncher):
+	name = 'xkbmap'
+	per_session_name = XKBMapPerSessionModule.name
+	session_type = xssmgr.modules.session.x11.X11Session.name # 'session.x11'

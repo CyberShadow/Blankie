@@ -52,7 +52,8 @@ class Configurator:
 		if xssmgr.state.locked:
 			wanted_modules.extend(self.on_lock_modules)
 
-		if xssmgr.state.idle and len(schedule) > 0:
+		idle_time = xssmgr.get_idle_time()
+		if idle_time >= 0 and len(schedule) > 0:
 			# Wakes us up when it's time to run the next on_idle hook(s).
 			wanted_modules.append(('timer', frozenset(schedule)))
 
@@ -61,7 +62,7 @@ class Configurator:
 		wanted_modules.extend(self.on_start_modules)
 
 		for (timeout, module_spec) in self.on_idle_modules:
-			if xssmgr.state.idle_time >= timeout * 1000:
+			if idle_time >= timeout * 1000:
 				wanted_modules.append(module_spec)
 
 	def print_status(self, f):

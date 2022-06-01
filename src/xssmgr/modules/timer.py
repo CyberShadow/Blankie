@@ -38,14 +38,18 @@ class TimerModule(xssmgr.modules.Module):
 	def timer_start_next(self):
 		self.timer_cancel()
 
+		idle_time = xssmgr.get_idle_time()
+		if idle_time < 0:
+			return  # wake-lock
+
 		next_time = math.inf
 		for timeout in self.timer_schedule:
 			timeout_ms = timeout * 1000
-			if xssmgr.state.idle_time < timeout_ms < next_time:
+			if idle_time < timeout_ms < next_time:
 				next_time = timeout_ms
 
 		if next_time < math.inf:
-			to_sleep = next_time - xssmgr.state.idle_time + 1
+			to_sleep = next_time - idle_time + 1
 			self.timer = threading.Timer(
 				interval=to_sleep / 1000,
 				function=xssmgr.daemon.call,
@@ -57,7 +61,8 @@ class TimerModule(xssmgr.modules.Module):
 	def timer_handle_done(self):
 		self.log.debug('Timer fired.')
 		self.timer = None  # It exited cleanly, no need to cancel it.
-		xssmgr.state.idle_time = int(subprocess.check_output(['xprintidle']))
+		for session in xssmgr.sessions.get_sessions():
+			session.invalidate()
 		xssmgr.modules.update()
 
 		self.timer_start_next()

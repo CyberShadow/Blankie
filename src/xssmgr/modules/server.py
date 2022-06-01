@@ -11,6 +11,7 @@ import threading
 
 import xssmgr
 import xssmgr.server
+import xssmgr.sessions
 
 class ServerModule(xssmgr.modules.Module):
 	name = 'server'
@@ -110,6 +111,18 @@ class ServerModule(xssmgr.modules.Module):
 						wfile.write(b'Unlocked.\n')
 					else:
 						wfile.write(b'Already unlocked.\n')
+				case 'attach':
+					try:
+						xssmgr.sessions.attach(args[1:])
+						wfile.write(b'ok')
+					except Exception as e:
+						wfile.write(e)
+				case 'detach':
+					try:
+						xssmgr.sessions.detach(args[1:])
+						wfile.write(b'ok')
+					except Exception as e:
+						wfile.write(e)
 				case _:
 					self.log.warning('Ignoring unknown daemon command: %r', args)
 		finally:
