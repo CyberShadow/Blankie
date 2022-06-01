@@ -146,7 +146,14 @@ Commands:
 
 		match args[0]:
 			case 'start':
-				return xssmgr.daemon.start()
+				ret = xssmgr.daemon.start()
+				if ret != 0:
+					return ret
+
+				session_spec = xssmgr.sessions.get_session()
+				if session_spec is not None:
+					log.info('Automatically attaching to current session %s.', session_spec)
+					xssmgr.sessions.remote_attach_or_detach(True, session_spec)
 
 			case 'stop':
 				xssmgr.daemon.stop_remote()
