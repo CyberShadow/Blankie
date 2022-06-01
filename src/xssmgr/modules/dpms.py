@@ -6,7 +6,7 @@ import subprocess
 
 import xssmgr
 
-class DPMSPerSessionModule(xssmgr.modules.Module):
+class DPMSPerSessionModule(xssmgr.module.Module):
 	name = 'internal-dpms-session'
 
 	def __init__(self, session_spec, dpms_state = 'off'):
@@ -29,7 +29,7 @@ class DPMSPerSessionModule(xssmgr.modules.Module):
 							  env=dict(os.environ, DISPLAY=self.display))
 
 
-class DPMSModule(xssmgr.sessions.PerSessionModuleLauncher):
+class DPMSModule(xssmgr.session.PerSessionModuleLauncher):
 	name = 'dpms'
 	per_session_name = DPMSPerSessionModule.name
 	session_type = xssmgr.modules.session.x11.X11Session.name # 'session.x11'

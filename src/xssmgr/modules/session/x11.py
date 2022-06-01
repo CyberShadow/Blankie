@@ -6,7 +6,7 @@ import subprocess
 
 import xssmgr
 
-class X11Session(xssmgr.sessions.Session):
+class X11Session(xssmgr.session.Session):
 	name = 'session.x11'
 
 	# X11 DISPLAY string.

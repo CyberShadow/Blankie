@@ -10,7 +10,7 @@ import threading
 import xssmgr
 import xssmgr.daemon
 
-class TimerModule(xssmgr.modules.Module):
+class TimerModule(xssmgr.module.Module):
 	name = 'timer'
 
 	def __init__(self, schedule):
@@ -61,8 +61,8 @@ class TimerModule(xssmgr.modules.Module):
 	def timer_handle_done(self):
 		self.log.debug('Timer fired.')
 		self.timer = None  # It exited cleanly, no need to cancel it.
-		for session in xssmgr.sessions.get_sessions():
+		for session in xssmgr.session.get_sessions():
 			session.invalidate()
-		xssmgr.modules.update()
+		xssmgr.module.update()
 
 		self.timer_start_next()

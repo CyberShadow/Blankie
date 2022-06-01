@@ -6,7 +6,7 @@ import subprocess
 
 import xssmgr
 
-class PhysLockModule(xssmgr.modules.Module):
+class PhysLockModule(xssmgr.module.Module):
 	name = 'physlock'
 
 	def start(self):

@@ -8,7 +8,7 @@ import subprocess
 import xssmgr
 import xssmgr.config
 
-class XKBMapPerSessionModule(xssmgr.modules.Module):
+class XKBMapPerSessionModule(xssmgr.module.Module):
 	name = 'internal-xkbmap-session'
 
 	def __init__(self, session_spec, *args):
@@ -43,7 +43,7 @@ class XKBMapPerSessionModule(xssmgr.modules.Module):
 							  env=dict(os.environ, DISPLAY=self.display))
 
 
-class XKBMapModule(xssmgr.sessions.PerSessionModuleLauncher):
+class XKBMapModule(xssmgr.session.PerSessionModuleLauncher):
 	name = 'xkbmap'
 	per_session_name = XKBMapPerSessionModule.name
 	session_type = xssmgr.modules.session.x11.X11Session.name # 'session.x11'

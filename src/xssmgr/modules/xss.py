@@ -11,13 +11,13 @@ import xssmgr
 import xssmgr.daemon
 import xssmgr.modules.session.x11
 
-class XSSPerSessionModule(xssmgr.modules.Module):
+class XSSPerSessionModule(xssmgr.module.Module):
 	name = 'internal-xss-session'
 
 	def __init__(self, session_spec):
 		super().__init__()
 		self.display = session_spec[1]
-		self.session = xssmgr.modules.get(session_spec)
+		self.session = xssmgr.module.get(session_spec)
 
 		# xss Popen object
 		self.xss_process = None
@@ -77,13 +77,13 @@ class XSSPerSessionModule(xssmgr.modules.Module):
 				else:
 					self.session.idle = True
 				self.session.invalidate()
-				xssmgr.modules.update()
+				xssmgr.module.update()
 
 			case _:
 				self.log.warning('Unknown line received from xss: %r', args)
 
 
-class XSSModule(xssmgr.sessions.PerSessionModuleLauncher):
+class XSSModule(xssmgr.session.PerSessionModuleLauncher):
 	name = 'xss'
 	per_session_name = XSSPerSessionModule.name
 	session_type = xssmgr.modules.session.x11.X11Session.name # 'session.x11'

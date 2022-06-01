@@ -11,9 +11,9 @@ import threading
 
 import xssmgr
 import xssmgr.server
-import xssmgr.sessions
+import xssmgr.session
 
-class ServerModule(xssmgr.modules.Module):
+class ServerModule(xssmgr.module.Module):
 	name = 'server'
 
 	def __init__(self):
@@ -89,14 +89,14 @@ class ServerModule(xssmgr.modules.Module):
 				case 'status':
 					wfile.write(b'Currently locked: %r\n' % (xssmgr.state.locked,))
 					wfile.write(b'Running modules:\n')
-					wfile.write(b''.join(b'- %r\n' % (m,) for m in xssmgr.modules.running_modules))
+					wfile.write(b''.join(b'- %r\n' % (m,) for m in xssmgr.module.running_modules))
 					xssmgr.config.configurator.print_status(wfile)
 				case 'stop':
 					xssmgr.daemon.stop()
 				case 'reload':
 					xssmgr.config.reload()
 				case 'module': # Synchronously execute module subcommand, in the daemon process
-					xssmgr.modules.get(args[1]).server_command(*args[2:])
+					xssmgr.module.get(args[1]).server_command(*args[2:])
 				case 'lock':
 					self.log.security('Locking the screen due to user request.')
 					if not xssmgr.state.locked:
@@ -113,13 +113,13 @@ class ServerModule(xssmgr.modules.Module):
 						wfile.write(b'Already unlocked.\n')
 				case 'attach':
 					try:
-						xssmgr.sessions.attach(args[1:])
+						xssmgr.session.attach(args[1:])
 						wfile.write(b'ok')
 					except Exception as e:
 						wfile.write(e)
 				case 'detach':
 					try:
-						xssmgr.sessions.detach(args[1:])
+						xssmgr.session.detach(args[1:])
 						wfile.write(b'ok')
 					except Exception as e:
 						wfile.write(e)

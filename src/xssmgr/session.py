@@ -1,4 +1,4 @@
-# xssmgr.sessions - session management
+# xssmgr.session - session management
 
 import os
 
@@ -16,7 +16,7 @@ from xssmgr.logging import log
 # We implement sessions as modules, to take advantage of the existing
 # module dependency and cleanup mechanisms.
 
-class Session(xssmgr.modules.Module):
+class Session(xssmgr.module.Module):
 	# Return this session's idle time in milliseconds.
 	# If this session cannot, in its current state (i.e. until the
 	# next call to invalidate), become idle, no matter how much time
@@ -33,10 +33,10 @@ class Session(xssmgr.modules.Module):
 	# Ensure that PerSessionModuleLauncher instances have their lists
 	# synchronized.
 	def start(self):
-		xssmgr.modules.update()
+		xssmgr.module.update()
 
 	def stop(self):
-		xssmgr.modules.update()
+		xssmgr.module.update()
 
 
 # This controls which Session modules should be running right now
@@ -48,7 +48,7 @@ session_specs = set()
 def session_selector(wanted_modules):
 	wanted_modules.extend(session_specs)
 
-xssmgr.modules.selectors['30-sessions'] = session_selector
+xssmgr.module.selectors['30-sessions'] = session_selector
 
 
 def attach(session_spec):
@@ -57,10 +57,10 @@ def attach(session_spec):
 
 	try:
 		session_specs.add(session_spec)
-		xssmgr.modules.update()
+		xssmgr.module.update()
 	except:
 		session_specs.remove(session_spec)
-		xssmgr.modules.update()
+		xssmgr.module.update()
 		raise
 
 
@@ -69,12 +69,12 @@ def detach(session_spec):
 		raise xssmgr.UserError('Already not attached to this session')
 
 	session_specs.remove(session_spec)
-	xssmgr.modules.update()
+	xssmgr.module.update()
 
 
 # Get all running Session objects.
 def get_sessions():
-	return [xssmgr.modules.get(spec) for spec in session_specs]
+	return [xssmgr.module.get(spec) for spec in session_specs]
 
 # -----------------------------------------------------------------------------
 # Per-session modules
@@ -85,7 +85,7 @@ def get_sessions():
 # ":0")) prepended.  Subclasses should just declare the name,
 # per_session_name, and session_type.
 
-class PerSessionModuleLauncher(xssmgr.modules.Module):
+class PerSessionModuleLauncher(xssmgr.module.Module):
 	# Name of the module to run (once per session).
 	# Define this in the subclass.
 	per_session_name = None
@@ -99,7 +99,7 @@ class PerSessionModuleLauncher(xssmgr.modules.Module):
 		super().__init__()
 
 	def per_session_selector(self, wanted_modules):
-		for module_spec in xssmgr.modules.running_modules:
+		for module_spec in xssmgr.module.running_modules:
 			if module_spec[0] == self.session_type:
 				wanted_modules.append((self.per_session_name, module_spec, *self.per_session_module_args))
 
@@ -107,12 +107,12 @@ class PerSessionModuleLauncher(xssmgr.modules.Module):
 		return '40-' + repr(self) + '-' + self.session_type + '-' + self.name
 
 	def start(self):
-		xssmgr.modules.selectors[self.per_session_selector_key()] = self.per_session_selector
-		xssmgr.modules.update()
+		xssmgr.module.selectors[self.per_session_selector_key()] = self.per_session_selector
+		xssmgr.module.update()
 
 	def stop(self):
-		del xssmgr.modules.selectors[self.per_session_selector_key()]
-		xssmgr.modules.update()
+		del xssmgr.module.selectors[self.per_session_selector_key()]
+		xssmgr.module.update()
 
 
 # -----------------------------------------------------------------------------

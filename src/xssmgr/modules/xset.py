@@ -9,7 +9,7 @@ import subprocess
 import xssmgr
 import xssmgr.config
 
-class XSetPerSessionModule(xssmgr.modules.Module):
+class XSetPerSessionModule(xssmgr.module.Module):
 	name = 'internal-xset-session'
 
 	def __init__(self, session_spec, time):
@@ -43,7 +43,7 @@ class XSetPerSessionModule(xssmgr.modules.Module):
 							  env=dict(os.environ, DISPLAY=self.display))
 
 
-class XSetModule(xssmgr.sessions.PerSessionModuleLauncher):
+class XSetModule(xssmgr.session.PerSessionModuleLauncher):
 	name = 'xset'
 	per_session_name = XSetPerSessionModule.name
 	session_type = xssmgr.modules.session.x11.X11Session.name # 'session.x11'

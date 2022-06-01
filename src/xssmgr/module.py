@@ -1,4 +1,4 @@
-# xssmgr.modules - core module machinery
+# xssmgr.module - core module machinery
 
 import importlib
 import os
@@ -221,4 +221,4 @@ def cli_command(module_spec_str, *args):
 	# subcommand, outside the daemon process.
 	module_spec = shlex.split(module_spec_str)
 
-	xssmgr.modules.get(module_spec).cli_command(args)
+	xssmgr.module.get(module_spec).cli_command(args)

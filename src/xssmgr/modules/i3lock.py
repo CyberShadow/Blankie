@@ -10,7 +10,7 @@ import time
 import xssmgr
 import xssmgr.daemon
 
-class I3LockPerSessionModule(xssmgr.modules.Module):
+class I3LockPerSessionModule(xssmgr.module.Module):
 	# Our goals:
 	# - Start i3lock when this module is started.
 	# - If i3lock fails to start (initialize), abort.
@@ -111,7 +111,7 @@ class I3LockPerSessionModule(xssmgr.modules.Module):
 			xssmgr.unlock()
 
 
-class I3LockModule(xssmgr.sessions.PerSessionModuleLauncher):
+class I3LockModule(xssmgr.session.PerSessionModuleLauncher):
 	name = 'i3lock'
 	per_session_name = I3LockPerSessionModule.name
 	session_type = xssmgr.modules.session.x11.X11Session.name # 'session.x11'

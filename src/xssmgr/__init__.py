@@ -50,7 +50,7 @@ class State:
 state = State()
 
 def get_idle_time():
-	return min((session.get_idle_time() for session in xssmgr.sessions.get_sessions()),
+	return min((session.get_idle_time() for session in xssmgr.session.get_sessions()),
 			   default=-math.inf)
 
 # -----------------------------------------------------------------------------
@@ -73,7 +73,7 @@ def unlock():
 	state.locked = False
 
 	# Ensure we don't try to immediately relock / go to sleep
-	for session in xssmgr.sessions.get_sessions():
+	for session in xssmgr.session.get_sessions():
 		session.invalidate()
 
 	# Notify of unlocks.
@@ -102,8 +102,8 @@ class UserError(Exception):
 import xssmgr.config
 import xssmgr.daemon
 import xssmgr.server
-import xssmgr.modules
-import xssmgr.sessions
+import xssmgr.module
+import xssmgr.session
 from xssmgr.logging import log
 
 # -----------------------------------------------------------------------------
@@ -118,7 +118,7 @@ def core_selector(wanted_modules):
 		('xss', ),
 	])
 
-xssmgr.modules.selectors['10-core'] = core_selector
+xssmgr.module.selectors['10-core'] = core_selector
 
 # -----------------------------------------------------------------------------
 # Entry point
@@ -150,10 +150,10 @@ Commands:
 				if ret != 0:
 					return ret
 
-				session_spec = xssmgr.sessions.get_session()
+				session_spec = xssmgr.session.get_session()
 				if session_spec is not None:
 					log.info('Automatically attaching to current session %s.', session_spec)
-					xssmgr.sessions.remote_attach_or_detach(True, session_spec)
+					xssmgr.session.remote_attach_or_detach(True, session_spec)
 
 			case 'stop':
 				xssmgr.daemon.stop_remote()
@@ -165,11 +165,11 @@ Commands:
 				sys.stdout.buffer.write(xssmgr.server.query(*args))
 
 			case 'attach' | 'detach':
-				xssmgr.sessions.remote_attach_or_detach(args[0] == 'attach')
+				xssmgr.session.remote_attach_or_detach(args[0] == 'attach')
 
 			# Internal commands:
 			case 'module':
-				xssmgr.modules.cli_command(args[1:])
+				xssmgr.module.cli_command(args[1:])
 
 			case _:
 				log.critical('Unknown command: %r', args[0])
