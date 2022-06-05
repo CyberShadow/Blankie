@@ -51,8 +51,8 @@ Create `~/.config/systemd/blankie.service`:
 ```
 [Service]
 Type=forking
-ExecStart=%h/path/to/blankie
-PIDFile=$XDG_RUNTIME_DIR/blankie/daemon.pid
+ExecStart=%h/path/to/blankie start
+PIDFile=%t/blankie/daemon.pid
 
 [Install]
 WantedBy=default.target
