@@ -45,7 +45,7 @@ class VLockPerSessionModule(xssmgr.module.Module):
 		if self.vlock_process is not None:
 			self.log.debug('Killing vlock (PID %d)...', self.vlock_process.pid)
 
-			self.vlock_process.terminate()
+			self.vlock_process.kill()  # vlock does not respond to SIGTERM
 			self.vlock_process.wait()
 			self.vlock_process = None
 
