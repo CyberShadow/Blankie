@@ -1,4 +1,4 @@
-# xssmgr.modules.session.console - Linux console session module
+# xssmgr.modules.session.tty - Linux tty session module
 
 import os
 import pty
@@ -6,8 +6,8 @@ import time
 
 import xssmgr
 
-class ConsoleSession(xssmgr.session.Session):
-	name = 'session.console'
+class TTYSession(xssmgr.session.Session):
+	name = 'session.tty'
 
 	# Path to the TTY device.
 	tty = None
@@ -43,6 +43,6 @@ class ConsoleSession(xssmgr.session.Session):
 def get_session():
 	try:
 		tty = os.ttyname(pty.STDERR_FILENO)
-		return (ConsoleSession.name, tty)
+		return (TTYSession.name, tty)
 	except Exception:
 		return None

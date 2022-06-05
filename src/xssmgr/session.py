@@ -119,10 +119,10 @@ class PerSessionModuleLauncher(xssmgr.module.Module):
 # Returns a module spec suitable for attaching to the invoking
 # process's session, or None.
 def get_session():
-	from xssmgr.modules.session import x11, console
+	from xssmgr.modules.session import x11, tty
 	return \
 		x11.get_session() or \
-		console.get_session() or \
+		tty.get_session() or \
 		None
 
 # Ask the xssmgr daemon to attach/detach to/from the given session that the

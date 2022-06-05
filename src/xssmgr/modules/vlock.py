@@ -9,7 +9,7 @@ import time
 
 import xssmgr
 import xssmgr.daemon
-import xssmgr.modules.session.console
+import xssmgr.modules.session.tty
 
 class VLockPerSessionModule(xssmgr.module.Module):
 	name = 'internal-vlock-session'
@@ -76,4 +76,4 @@ class VLockPerSessionModule(xssmgr.module.Module):
 class VLockModule(xssmgr.session.PerSessionModuleLauncher):
 	name = 'vlock'
 	per_session_name = VLockPerSessionModule.name
-	session_type = xssmgr.modules.session.console.ConsoleSession.name # 'session.console'
+	session_type = xssmgr.modules.session.tty.TTYSession.name # 'session.tty'
