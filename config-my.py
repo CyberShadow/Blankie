@@ -119,9 +119,6 @@ def config(c):
 	# screen becomes visible, thus confirming that the machine is secure.
 	c.on_lock('i3lock', '--show-failed-attempts', '--image', os.path.expanduser('~/data/images/wallpaper/blurred.png'))
 
-	# Lock console TTYs, too.
-	c.on_lock('vlock')
-
 import xssmgr.module
 
 # Custom on_lock xssmgr module: udiskie
