@@ -114,8 +114,13 @@ def core_selector(wanted_modules):
 		# Receives commands / events from other processes.
 		('server', ),
 
-		# Receives idle / unidle events.
+		# Receives idle / unidle events from X.
+		# Required for X11 sessions to work properly.
 		('xss', ),
+
+		# Monitors TTY device timestamps.
+		# Required for TTY sessions to work properly.
+		('tty_idle', ),
 	])
 
 xssmgr.module.selectors['10-core'] = core_selector
