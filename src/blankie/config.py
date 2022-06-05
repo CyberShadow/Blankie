@@ -1,12 +1,12 @@
-# xssmgr.config - loads, evaluates, and manages the user's configuration
+# blankie.config - loads, evaluates, and manages the user's configuration
 
 import importlib
 import os
 import sys
 
-import xssmgr
-import xssmgr.module
-from xssmgr.logging import log
+import blankie
+import blankie.module
+from blankie.logging import log
 
 # The user config module.
 module = None
@@ -32,7 +32,7 @@ class Configurator:
 	def on_idle(self, idle_seconds, module, *parameters):
 		'''Called from the user's configuration to register an on-idle module.'''
 		if not isinstance(idle_seconds, int) or idle_seconds <= 0:
-			raise xssmgr.UserError('Invalid idle time - must be a positive integer')
+			raise blankie.UserError('Invalid idle time - must be a positive integer')
 		self.on_idle_modules.append((idle_seconds, (module, *parameters)))
 
 	def selector(self, wanted_modules):
@@ -49,10 +49,10 @@ class Configurator:
 			wanted_modules.append(('xset', schedule[0]))
 
 		# React to locking/unlocking by starting/stopping on_lock modules.
-		if xssmgr.state.locked:
+		if blankie.state.locked:
 			wanted_modules.extend(self.on_lock_modules)
 
-		idle_time = xssmgr.get_idle_time()
+		idle_time = blankie.get_idle_time()
 		if idle_time >= 0 and len(schedule) > 0:
 			# Wakes us up when it's time to run the next on_idle hook(s).
 			wanted_modules.append(('timer', frozenset(schedule)))
@@ -66,7 +66,7 @@ class Configurator:
 				wanted_modules.append(module_spec)
 
 	def print_status(self, f):
-		'''Used in 'xssmgr status' command.'''
+		'''Used in 'blankie status' command.'''
 		f.write(b'Configured on_start modules:\n')
 		f.write(b''.join(b'- %r\n' % (spec,) for spec in self.on_start_modules))
 		f.write(b'Configured on_idle modules:\n')
@@ -75,7 +75,7 @@ class Configurator:
 		f.write(b''.join(b'- %r\n' % (spec,) for spec in self.on_lock_modules))
 
 configurator = Configurator()
-xssmgr.module.selectors['20-config'] = configurator.selector
+blankie.module.selectors['20-config'] = configurator.selector
 
 # (Re-)Load the configuration file.
 def load():
@@ -83,10 +83,10 @@ def load():
 
 	config_dirs = os.getenv('XDG_CONFIG_DIRS', '/etc').split(':')
 	config_dirs = [os.getenv('XDG_CONFIG_HOME', os.environ['HOME'] + '/.config')] + config_dirs
-	config_files = [d + '/xssmgr/config.py' for d in config_dirs]
+	config_files = [d + '/blankie/config.py' for d in config_dirs]
 
-	xssmgr.module.module_dirs = (
-		[d + '/xssmgr/modules' for d in config_dirs] +
+	blankie.module.module_dirs = (
+		[d + '/blankie/modules' for d in config_dirs] +
 		[os.path.dirname(__file__) + '/modules']
 	)
 
@@ -95,7 +95,7 @@ def load():
 			log.debug('Loading configuration from %r.', config_file)
 
 			# https://docs.python.org/3/library/importlib.html#importing-a-source-file-directly
-			module_name = 'xssmgr_user_config'
+			module_name = 'blankie_user_config'
 			spec = importlib.util.spec_from_file_location(module_name, config_file)
 			module = importlib.util.module_from_spec(spec)
 			sys.modules[module_name] = module
@@ -116,7 +116,7 @@ def reconfigure():
 	module.config(configurator)
 
 	# Update our state to match.
-	xssmgr.module.update()
+	blankie.module.update()
 
 # Reload the configuration file and re-apply the configuration.
 def reload():

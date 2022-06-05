@@ -1,4 +1,4 @@
-# xssmgr.module - core module machinery
+# blankie.module - core module machinery
 
 import importlib
 import os
@@ -6,8 +6,8 @@ import shlex
 import sys
 import traceback
 
-import xssmgr
-from xssmgr.logging import log
+import blankie
+from blankie.logging import log
 
 # Base class for modules.
 class Module:
@@ -29,7 +29,7 @@ class Module:
 
 	# Optional reconfiguration function.
 	# Should accept the same arguments as the constructor.
-	# Will be called on a running (started) module when xssmgr wants
+	# Will be called on a running (started) module when Blankie wants
 	# to stop and start a pair of modules with the same name
 	# (differing only in parameters).
 	# - If it returns True, the reconfiguration is considered to have
@@ -40,7 +40,7 @@ class Module:
 	def reconfigure(self, *_args, **_kwargs):
 		return False
 
-	# Run an 'xssmgr module ...' command.
+	# Run a 'blankie module ...' command.
 	# (Runs outside the daemon process.)
 	def cli_command(self, *_args):
 		raise NotImplementedError()
@@ -73,7 +73,7 @@ def load_module(module_name):
 		module_file = module_dir  + '/' + module_name.replace('.', '/') + '.py'
 		if os.path.exists(module_file):
 			log.debug('Loading module %r from %r', module_name, module_file)
-			python_module_name = 'xssmgr.modules' + module_name
+			python_module_name = 'blankie.modules' + module_name
 
 			# https://docs.python.org/3/library/importlib.html#importing-a-source-file-directly
 			spec = importlib.util.spec_from_file_location(python_module_name, module_file)
@@ -83,7 +83,7 @@ def load_module(module_name):
 
 			return
 
-	raise xssmgr.UserError('Module %r not found (looked in: %r)' % (
+	raise blankie.UserError('Module %r not found (looked in: %r)' % (
 		module_name,
 		module_dirs,
 	))
@@ -189,18 +189,18 @@ def start_stop_modules():
 		pass  # Keep going
 
 	if errors:
-		raise xssmgr.UserError('Failed to stop some modules.')
+		raise blankie.UserError('Failed to stop some modules.')
 
 	log.debug('Modules are synchronized.')
 
 # Start or stop modules according to the current circumstances.
 def update():
-	assert xssmgr.daemon.is_main_thread()
+	assert blankie.daemon.is_main_thread()
 
 	# 1. Build the list of wanted modules.
 	# Do this by calling the functions registered in selectors.
 
-	log.debug('Updating list of modules to run with circumstances: %s', xssmgr.state)
+	log.debug('Updating list of modules to run with circumstances: %s', blankie.state)
 
 	global wanted_modules
 	wanted_modules = []
@@ -221,4 +221,4 @@ def cli_command(module_spec_str, *args):
 	# subcommand, outside the daemon process.
 	module_spec = shlex.split(module_spec_str)
 
-	xssmgr.module.get(module_spec).cli_command(args)
+	blankie.module.get(module_spec).cli_command(args)

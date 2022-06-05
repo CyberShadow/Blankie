@@ -1,4 +1,4 @@
-# xssmgr.modules.i3lock - optional on_lock module
+# blankie.modules.i3lock - optional on_lock module
 # Manages an i3lock instance.
 
 import os
@@ -7,10 +7,10 @@ import subprocess
 import threading
 import time
 
-import xssmgr
-import xssmgr.daemon
+import blankie
+import blankie.daemon
 
-class I3LockPerSessionModule(xssmgr.module.Module):
+class I3LockPerSessionModule(blankie.module.Module):
 	# Our goals:
 	# - Start i3lock when this module is started.
 	# - If i3lock fails to start (initialize), abort.
@@ -52,7 +52,7 @@ class I3LockPerSessionModule(xssmgr.module.Module):
 			# This signals that i3lock initialized (hopefully successfully).
 			outer.wait()
 			if outer.returncode != 0:
-				raise xssmgr.UserError('mod_i3lock: i3lock failed to start!')
+				raise blankie.UserError('mod_i3lock: i3lock failed to start!')
 
 			# Find the inner process.
 			p = subprocess.check_output(['ps', '--ppid', str(outer.pid), '-C', 'i3lock', '-o', 'pid'])
@@ -61,7 +61,7 @@ class I3LockPerSessionModule(xssmgr.module.Module):
 			try:
 				os.kill(self.i3lock_inner_pid, 0)
 			except ProcessLookupError:
-				raise xssmgr.UserError('mod_i3lock: Failed to find the PID of the forked i3lock process.')
+				raise blankie.UserError('mod_i3lock: Failed to find the PID of the forked i3lock process.')
 
 			# Create a thread waiting for EOF from the pipe, to know when i3lock exits.
 			# (We use this method to avoid polling with e.g. `kill -0`.)
@@ -94,7 +94,7 @@ class I3LockPerSessionModule(xssmgr.module.Module):
 		f.read()
 		# If we're here, f.read() reached EOF, which means that all write ends
 		# of the pipe were closed, which means that i3lock exited.
-		xssmgr.daemon.call(self.i3lock_handle_exit, pid)
+		blankie.daemon.call(self.i3lock_handle_exit, pid)
 
 	def i3lock_handle_exit(self, pid):
 		if self.i3lock_inner_pid is None:
@@ -108,10 +108,10 @@ class I3LockPerSessionModule(xssmgr.module.Module):
 			# Unset these first, so we don't attempt to kill a
 			# nonexisting process when this module is stopped.
 			self.i3lock_inner_pid = None
-			xssmgr.unlock()
+			blankie.unlock()
 
 
-class I3LockModule(xssmgr.session.PerSessionModuleLauncher):
+class I3LockModule(blankie.session.PerSessionModuleLauncher):
 	name = 'i3lock'
 	per_session_name = I3LockPerSessionModule.name
-	session_type = xssmgr.modules.session.x11.X11Session.name # 'session.x11'
+	session_type = blankie.modules.session.x11.X11Session.name # 'session.x11'

@@ -1,12 +1,12 @@
-# xssmgr.modules.power - optional on_idle module
+# blankie.modules.power - optional on_idle module
 # Runs a power action on start.
 
 import math
 import subprocess
 
-import xssmgr
+import blankie
 
-class PowerModule(xssmgr.module.Module):
+class PowerModule(blankie.module.Module):
 	name = 'power'
 
 	def __init__(self, action = 'suspend'):
@@ -17,7 +17,7 @@ class PowerModule(xssmgr.module.Module):
 		self.power_action = action
 
 	def start(self):
-		if xssmgr.get_idle_time() == math.inf:
+		if blankie.get_idle_time() == math.inf:
 			# The system is already executing a power action.
 			return
 		subprocess.check_call(['systemctl', self.power_action])

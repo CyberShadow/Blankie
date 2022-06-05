@@ -1,14 +1,14 @@
-# xssmgr.modules.physlock - optional on_lock module
+# blankie.modules.physlock - optional on_lock module
 # Manages a physlock instance to lock all VTs.
 
 import subprocess
 import threading
 
-import xssmgr
-import xssmgr.daemon
-import xssmgr.modules.session.tty
+import blankie
+import blankie.daemon
+import blankie.modules.session.tty
 
-class PhysLockModule(xssmgr.module.Module):
+class PhysLockModule(blankie.module.Module):
 	name = 'physlock'
 
 	def __init__(self, *args):
@@ -63,7 +63,7 @@ class PhysLockModule(xssmgr.module.Module):
 
 	def physlock_waiter(self, physlock_process):
 		physlock_process.wait()
-		xssmgr.daemon.call(self.physlock_handle_exit, physlock_process.pid)
+		blankie.daemon.call(self.physlock_handle_exit, physlock_process.pid)
 
 	def physlock_handle_exit(self, pid):
 		if self.physlock_process is None:
@@ -77,4 +77,4 @@ class PhysLockModule(xssmgr.module.Module):
 			# Unset this first, so we don't attempt to kill a
 			# nonexisting process when this module is stopped.
 			self.physlock_process = None
-			xssmgr.unlock()
+			blankie.unlock()

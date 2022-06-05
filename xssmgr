@@ -1,9 +1,0 @@
-#!/bin/sh
-
-# X ScreenSaver manager
-# POSIX launch script
-
-# You can use this script to run xssmgr directly from a source
-# checkout (without first "installing" it with pip / setup.py).
-
-PYTHONPATH="$(dirname "$0")"/src:"$PYTHONPATH" exec "${PYTHON-python}" -m xssmgr "$@"

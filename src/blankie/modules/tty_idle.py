@@ -1,22 +1,22 @@
-# xssmgr.modules.tty_idle - built-in on_start module
-# Monitors the timestamps of TTY devices, so that xssmgr can be
+# blankie.modules.tty_idle - built-in on_start module
+# Monitors the timestamps of TTY devices, so that Blankie can be
 # notified when a TTY stops being idle.
 
 import threading
 
 import inotify_simple
 
-import xssmgr
-import xssmgr.daemon
-import xssmgr.modules.session.tty
+import blankie
+import blankie.daemon
+import blankie.modules.session.tty
 
-class TTYIdlePerSessionModule(xssmgr.module.Module):
+class TTYIdlePerSessionModule(blankie.module.Module):
 	name = 'internal-tty_idle-session'
 
 	def __init__(self, session_spec):
 		super().__init__()
 		self.tty = session_spec[1]
-		self.session = xssmgr.module.get(session_spec)
+		self.session = blankie.module.get(session_spec)
 
 		# inotify object and watch descriptor
 		self.inotify = inotify_simple.INotify()
@@ -56,7 +56,7 @@ class TTYIdlePerSessionModule(xssmgr.module.Module):
 			self.log.debug('Ignoring stale TTY inotify event')
 			return
 		self.session.invalidate()
-		xssmgr.module.update()
+		blankie.module.update()
 
 
 class INotifyThread(threading.Thread):
@@ -67,10 +67,10 @@ class INotifyThread(threading.Thread):
 		for _ in self.module.inotify.read():
 			if self.stop:
 				return
-			xssmgr.daemon.call(self.module.tty_idle_handle_event, self)
+			blankie.daemon.call(self.module.tty_idle_handle_event, self)
 
 
-class TTYIdleModule(xssmgr.session.PerSessionModuleLauncher):
+class TTYIdleModule(blankie.session.PerSessionModuleLauncher):
 	name = 'tty_idle'
 	per_session_name = TTYIdlePerSessionModule.name
-	session_type = xssmgr.modules.session.tty.TTYSession.name # 'session.tty'
+	session_type = blankie.modules.session.tty.TTYSession.name # 'session.tty'

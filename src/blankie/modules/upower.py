@@ -1,17 +1,17 @@
-# xssmgr.modules.upower - optional on_start module
+# blankie.modules.upower - optional on_start module
 # Manages a upower --monitor instance, which receives events from the
 # UPower daemon.  Used to know when the system power status changes
 # (e.g. AC power is connected or disconnected), which would require
-# re-evaluating xssmgr's configuration.
+# re-evaluating Blankie's configuration.
 
 import subprocess
 import threading
 
-import xssmgr
-import xssmgr.config
-import xssmgr.daemon
+import blankie
+import blankie.config
+import blankie.daemon
 
-class UPowerModule(xssmgr.module.Module):
+class UPowerModule(blankie.module.Module):
 	name = 'upower'
 
 	def __init__(self):
@@ -51,8 +51,8 @@ class UPowerModule(xssmgr.module.Module):
 
 	def upower_reader(self, f):
 		while f.readline():
-			xssmgr.daemon.call(self.upower_handle_ping)
+			blankie.daemon.call(self.upower_handle_ping)
 
 	def upower_handle_ping(self):
 		self.log.debug('Got a line from upower, reconfiguring.')
-		xssmgr.config.reconfigure()
+		blankie.config.reconfigure()

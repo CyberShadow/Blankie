@@ -1,12 +1,12 @@
-# xssmgr.modules.session.tty - Linux tty session module
+# blankie.modules.session.tty - Linux tty session module
 
 import os
 import pty
 import time
 
-import xssmgr
+import blankie
 
-class TTYSession(xssmgr.session.Session):
+class TTYSession(blankie.session.Session):
 	name = 'session.tty'
 
 	# Path to the TTY device.

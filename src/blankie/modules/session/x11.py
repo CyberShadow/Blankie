@@ -1,12 +1,12 @@
-# xssmgr.modules.session.x11 - X11 session module
+# blankie.modules.session.x11 - X11 session module
 
 import math
 import os
 import subprocess
 
-import xssmgr
+import blankie
 
-class X11Session(xssmgr.session.Session):
+class X11Session(blankie.session.Session):
 	name = 'session.x11'
 
 	# X11 DISPLAY string.

@@ -1,4 +1,4 @@
-# xssmgr.server - UNIX socket management and sending commands
+# blankie.server - UNIX socket management and sending commands
 # The daemon will listen on a UNIX socket (see the 'server' module)
 # which allows it to receive commands from other processes.
 
@@ -6,10 +6,10 @@ import json
 import os
 import socket
 
-import xssmgr
+import blankie
 
 # Path to the UNIX socket filesystem object.
-path = os.environ.setdefault('XSSMGR_SOCKET', xssmgr.run_dir + '/daemon.sock')
+path = os.environ.setdefault('XSSMGR_SOCKET', blankie.run_dir + '/daemon.sock')
 
 # -----------------------------------------------------------------------------
 # Daemon communication
@@ -20,7 +20,7 @@ def _send(*args):
 	try:
 		s.connect(path)
 	except (FileNotFoundError, ConnectionRefusedError) as e:
-		raise xssmgr.UserError('Failed to connect to daemon UNIX socket at %r (%s). Is the xssmgr daemon running?' %
+		raise blankie.UserError('Failed to connect to daemon UNIX socket at %r (%s). Is the blankie daemon running?' %
 							   (path, e))
 
 	message = bytes(json.dumps(args) + '\n', 'utf-8')

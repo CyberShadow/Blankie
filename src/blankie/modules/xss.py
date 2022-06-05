@@ -1,4 +1,4 @@
-# xssmgr.modules.xss - built-in on_start module
+# blankie.modules.xss - built-in on_start module
 # Manages an instance of a helper program, which receives screen saver
 # events from the X server.  Used to know when the system becomes or
 # stops being idle.
@@ -7,17 +7,17 @@ import os
 import subprocess
 import threading
 
-import xssmgr
-import xssmgr.daemon
-import xssmgr.modules.session.x11
+import blankie
+import blankie.daemon
+import blankie.modules.session.x11
 
-class XSSPerSessionModule(xssmgr.module.Module):
+class XSSPerSessionModule(blankie.module.Module):
 	name = 'internal-xss-session'
 
 	def __init__(self, session_spec):
 		super().__init__()
 		self.display = session_spec[1]
-		self.session = xssmgr.module.get(session_spec)
+		self.session = blankie.module.get(session_spec)
 
 		# xss Popen object
 		self.xss_process = None
@@ -31,7 +31,7 @@ class XSSPerSessionModule(xssmgr.module.Module):
 		# Start xss
 		if self.xss_process is None:
 			self.xss_process = subprocess.Popen(
-				[xssmgr.lib_dir + '/xss'],
+				[blankie.lib_dir + '/xss'],
 				stdout = subprocess.PIPE,
 				env=dict(os.environ, DISPLAY=self.display),
 			)
@@ -41,7 +41,7 @@ class XSSPerSessionModule(xssmgr.module.Module):
 				self.xss_process.terminate()
 				self.xss_process.communicate()
 				self.xss_process = None
-				raise xssmgr.UserError('mod_xss: Failed to start xss.')
+				raise blankie.UserError('mod_xss: Failed to start xss.')
 
 			# Start event reader task
 			self.xss_reader_thread = threading.Thread(target=self.xss_reader, args=(self.xss_process.stdout,))
@@ -64,7 +64,7 @@ class XSSPerSessionModule(xssmgr.module.Module):
 
 	def xss_reader(self, f):
 		while line := f.readline():
-			xssmgr.daemon.call(self.xss_handle_event, *line.split())
+			blankie.daemon.call(self.xss_handle_event, *line.split())
 		self.log.debug('xss exited (EOF).')
 
 	def xss_handle_event(self, *args):
@@ -77,13 +77,13 @@ class XSSPerSessionModule(xssmgr.module.Module):
 				else:
 					self.session.idle = True
 				self.session.invalidate()
-				xssmgr.module.update()
+				blankie.module.update()
 
 			case _:
 				self.log.warning('Unknown line received from xss: %r', args)
 
 
-class XSSModule(xssmgr.session.PerSessionModuleLauncher):
+class XSSModule(blankie.session.PerSessionModuleLauncher):
 	name = 'xss'
 	per_session_name = XSSPerSessionModule.name
-	session_type = xssmgr.modules.session.x11.X11Session.name # 'session.x11'
+	session_type = blankie.modules.session.x11.X11Session.name # 'session.x11'

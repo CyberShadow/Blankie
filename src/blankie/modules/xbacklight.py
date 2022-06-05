@@ -1,12 +1,12 @@
-# xssmgr.modules.xbacklight - optional on_idle module
+# blankie.modules.xbacklight - optional on_idle module
 # Runs and manages an xbacklight process, which fades the screen to
 # black over the configured duration.
 
 import subprocess
 import threading
 
-import xssmgr
-import xssmgr.daemon
+import blankie
+import blankie.daemon
 
 def _parse_config(args):
 	xbacklight_args = []
@@ -24,7 +24,7 @@ def _parse_config(args):
 
 	return (xbacklight_args, xbacklight_set_args)
 
-class XBacklightModule(xssmgr.module.Module):
+class XBacklightModule(blankie.module.Module):
 	name = 'xbacklight'
 
 	def __init__(self, *args):
@@ -93,7 +93,7 @@ class XBacklightModule(xssmgr.module.Module):
 
 	def xbacklight_reader(self, f):
 		f.read() # Wait for EOF
-		xssmgr.daemon.call(self.xbacklight_handle_exit)
+		blankie.daemon.call(self.xbacklight_handle_exit)
 
 	def xbacklight_handle_exit(self):
 		if self.xbacklight_process is not None:

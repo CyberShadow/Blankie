@@ -1,7 +1,7 @@
-# xssmgr.modules.server - core on_start module
+# blankie.modules.server - core on_start module
 # Runs a UNIX socket server and receives events.
-# Needed for daemon communication commands such as "xssmgr stop" or
-# "xssmgr status".
+# Needed for daemon communication commands such as "blankie stop" or
+# "blankie status".
 
 import contextlib
 import json
@@ -9,11 +9,11 @@ import os
 import socketserver
 import threading
 
-import xssmgr
-import xssmgr.server
-import xssmgr.session
+import blankie
+import blankie.server
+import blankie.session
 
-class ServerModule(xssmgr.module.Module):
+class ServerModule(blankie.module.Module):
 	name = 'server'
 
 	def __init__(self):
@@ -28,8 +28,8 @@ class ServerModule(xssmgr.module.Module):
 	def start(self):
 		# Remove stale socket
 		with contextlib.suppress(FileNotFoundError):
-			os.remove(xssmgr.server.path)
-			self.log.debug('Removed stale socket: %r', xssmgr.server.path)
+			os.remove(blankie.server.path)
+			self.log.debug('Removed stale socket: %r', blankie.server.path)
 
 		# Create and initialize the SocketServer instance
 		self.server = SocketServer(self)
@@ -44,7 +44,7 @@ class ServerModule(xssmgr.module.Module):
 		# to check if it should shut down.
 		self.server.stopping = True
 		self.server = None
-		xssmgr.server.notify('server-shutdown-ping')
+		blankie.server.notify('server-shutdown-ping')
 
 		# Now, just wait for the thread to exit.
 		self.server_thread.join()
@@ -72,7 +72,7 @@ class ServerModule(xssmgr.module.Module):
 			return  # This was sent just to wake up the accept loop.
 
 		done_event = threading.Event()
-		xssmgr.daemon.call(self.server_run_command, handler, done_event, *command)
+		blankie.daemon.call(self.server_run_command, handler, done_event, *command)
 
 		# Wait until the event is processed, to avoid the connection
 		# getting closed early.
@@ -87,39 +87,39 @@ class ServerModule(xssmgr.module.Module):
 				case 'ping':
 					handler.wfile.write(b'pong\n')
 				case 'status':
-					handler.wfile.write(b'Currently locked: %r\n' % (xssmgr.state.locked,))
+					handler.wfile.write(b'Currently locked: %r\n' % (blankie.state.locked,))
 					handler.wfile.write(b'Running modules:\n')
-					handler.wfile.write(b''.join(b'- %r\n' % (m,) for m in xssmgr.module.running_modules))
-					xssmgr.config.configurator.print_status(handler.wfile)
+					handler.wfile.write(b''.join(b'- %r\n' % (m,) for m in blankie.module.running_modules))
+					blankie.config.configurator.print_status(handler.wfile)
 				case 'stop':
-					xssmgr.daemon.stop()
+					blankie.daemon.stop()
 				case 'reload':
-					xssmgr.config.reload()
+					blankie.config.reload()
 				case 'module': # Synchronously execute module subcommand, in the daemon process
-					xssmgr.module.get(args[1]).server_command(*args[2:])
+					blankie.module.get(args[1]).server_command(*args[2:])
 				case 'lock':
 					self.log.security('Locking the screen due to user request.')
-					if not xssmgr.state.locked:
-						xssmgr.lock()
+					if not blankie.state.locked:
+						blankie.lock()
 						handler.wfile.write(b'Locked.\n')
 					else:
 						handler.wfile.write(b'Already locked.\n')
 				case 'unlock':
 					self.log.security('Unlocking the screen due to user request.')
-					if xssmgr.state.locked:
-						xssmgr.unlock()
+					if blankie.state.locked:
+						blankie.unlock()
 						handler.wfile.write(b'Unlocked.\n')
 					else:
 						handler.wfile.write(b'Already unlocked.\n')
 				case 'attach':
 					try:
-						xssmgr.session.attach(args[1:])
+						blankie.session.attach(args[1:])
 						handler.wfile.write(b'ok')
 					except Exception as e:
 						handler.wfile.write(e)
 				case 'detach':
 					try:
-						xssmgr.session.detach(args[1:])
+						blankie.session.detach(args[1:])
 						handler.wfile.write(b'ok')
 					except Exception as e:
 						handler.wfile.write(e)
@@ -138,4 +138,4 @@ class SocketServer(socketserver.ThreadingMixIn, socketserver.UnixStreamServer):
 	def __init__(self, module):
 		self.module = module
 		self.stopping = False
-		super().__init__(xssmgr.server.path, Handler)
+		super().__init__(blankie.server.path, Handler)

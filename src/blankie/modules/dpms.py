@@ -1,12 +1,12 @@
-# xssmgr.modules.dpms - optional on_idle module
+# blankie.modules.dpms - optional on_idle module
 # Turns off the screen(s) via the xset dpms command.
 
 import os
 import subprocess
 
-import xssmgr
+import blankie
 
-class DPMSPerSessionModule(xssmgr.module.Module):
+class DPMSPerSessionModule(blankie.module.Module):
 	name = 'internal-dpms-session'
 
 	def __init__(self, session_spec, dpms_state = 'off'):
@@ -29,7 +29,7 @@ class DPMSPerSessionModule(xssmgr.module.Module):
 							  env=dict(os.environ, DISPLAY=self.display))
 
 
-class DPMSModule(xssmgr.session.PerSessionModuleLauncher):
+class DPMSModule(blankie.session.PerSessionModuleLauncher):
 	name = 'dpms'
 	per_session_name = DPMSPerSessionModule.name
-	session_type = xssmgr.modules.session.x11.X11Session.name # 'session.x11'
+	session_type = blankie.modules.session.x11.X11Session.name # 'session.x11'

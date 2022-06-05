@@ -1,4 +1,4 @@
-# xssmgr.__main__ - entry point
+# blankie.__main__ - entry point
 
 import sys
 

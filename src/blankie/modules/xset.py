@@ -1,4 +1,4 @@
-# xssmgr.modules.xset - built-in on_start module
+# blankie.modules.xset - built-in on_start module
 # Manages the X server's XScreenSaver extension settings.  Used to
 # configure when xss receives notifications about the system becoming
 # idle.
@@ -6,10 +6,10 @@
 import os
 import subprocess
 
-import xssmgr
-import xssmgr.config
+import blankie
+import blankie.config
 
-class XSetPerSessionModule(xssmgr.module.Module):
+class XSetPerSessionModule(blankie.module.Module):
 	name = 'internal-xset-session'
 
 	def __init__(self, session_spec, time):
@@ -43,7 +43,7 @@ class XSetPerSessionModule(xssmgr.module.Module):
 							  env=dict(os.environ, DISPLAY=self.display))
 
 
-class XSetModule(xssmgr.session.PerSessionModuleLauncher):
+class XSetModule(blankie.session.PerSessionModuleLauncher):
 	name = 'xset'
 	per_session_name = XSetPerSessionModule.name
-	session_type = xssmgr.modules.session.x11.X11Session.name # 'session.x11'
+	session_type = blankie.modules.session.x11.X11Session.name # 'session.x11'

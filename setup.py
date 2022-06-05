@@ -1,13 +1,13 @@
 from setuptools import setup
 
 setup(
-	name='xssmgr',
+	name='blankie',
 	description='X ScreenSaver manager',
-	packages=['xssmgr'],
+	packages=['blankie'],
 	package_dir={'':'src'},
 	entry_points={
 		'console_scripts': [
-			'xssmgr=xssmgr:main',
+			'blankie=blankie:main',
 		]
 	}
 )

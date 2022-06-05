@@ -1,12 +1,12 @@
-# xssmgr.modules.dunst - optional on_lock module
+# blankie.modules.dunst - optional on_lock module
 # Pauses dunst notifications, preventing them from being displayed on
 # top of the lock screen.
 
 import subprocess
 
-import xssmgr
+import blankie
 
-class DunstModule(xssmgr.module.Module):
+class DunstModule(blankie.module.Module):
 	name = 'dunst'
 
 	def start(self):

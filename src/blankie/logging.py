@@ -1,9 +1,9 @@
-# xssmgr.logging - logging implementation
+# blankie.logging - logging implementation
 
 import logging
 import os
 
-# Define a few severity levels specific to xssmgr
+# Define a few severity levels specific to Blankie
 TRACE = logging.DEBUG - 5
 SECURITY = logging.ERROR - 5
 
@@ -32,4 +32,4 @@ logging.basicConfig(
 		TRACE,
 	][4 + int(os.getenv('XSSMGR_VERBOSE', '0'))]
 )
-log = logging.getLogger('xssmgr')
+log = logging.getLogger('blankie')

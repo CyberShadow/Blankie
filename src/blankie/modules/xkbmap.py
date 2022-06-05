@@ -1,14 +1,14 @@
-# xssmgr.modules.xkbmap - optional on_lock module
+# blankie.modules.xkbmap - optional on_lock module
 # Configures the XKB map as requested when activating the lock screen,
 # and restores previous settings when deactivating.
 
 import os
 import subprocess
 
-import xssmgr
-import xssmgr.config
+import blankie
+import blankie.config
 
-class XKBMapPerSessionModule(xssmgr.module.Module):
+class XKBMapPerSessionModule(blankie.module.Module):
 	name = 'internal-xkbmap-session'
 
 	def __init__(self, session_spec, *args):
@@ -43,7 +43,7 @@ class XKBMapPerSessionModule(xssmgr.module.Module):
 							  env=dict(os.environ, DISPLAY=self.display))
 
 
-class XKBMapModule(xssmgr.session.PerSessionModuleLauncher):
+class XKBMapModule(blankie.session.PerSessionModuleLauncher):
 	name = 'xkbmap'
 	per_session_name = XKBMapPerSessionModule.name
-	session_type = xssmgr.modules.session.x11.X11Session.name # 'session.x11'
+	session_type = blankie.modules.session.x11.X11Session.name # 'session.x11'

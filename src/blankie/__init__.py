@@ -1,4 +1,4 @@
-# xssmgr.__init__ - core definitions and logic
+# blankie.__init__ - core definitions and logic
 # Receives events and manages X screen saver settings, power,
 # and the screen locker.
 
@@ -15,22 +15,22 @@ run_dir = os.environ.setdefault(
 	os.getenv(
 		'XDG_RUNTIME_DIR',
 		'/tmp/' + str(os.getuid())
-	) + '/xssmgr'
+	) + '/blankie'
 )
 
 # -----------------------------------------------------------------------------
 # Internal globals
 
-# Allow running xssmgr directly from a source checkout or extracted
+# Allow running Blankie directly from a source checkout or extracted
 # tarball.
-is_source_checkout = __file__.endswith('/src/xssmgr/__init__.py')
+is_source_checkout = __file__.endswith('/src/blankie/__init__.py')
 
 # Library directory.
 if is_source_checkout:
 	# Running from a source checkout
 	lib_dir = os.path.dirname(__file__) + '/../../lib'
 else:
-	lib_dir = '/usr/lib/xssmgr'
+	lib_dir = '/usr/lib/blankie'
 
 # -----------------------------------------------------------------------------
 # Current state
@@ -50,7 +50,7 @@ class State:
 state = State()
 
 def get_idle_time():
-	return min((session.get_idle_time() for session in xssmgr.session.get_sessions()),
+	return min((session.get_idle_time() for session in blankie.session.get_sessions()),
 			   default=-math.inf)
 
 # -----------------------------------------------------------------------------
@@ -64,7 +64,7 @@ def get_idle_time():
 
 def lock():
 	state.locked = True
-	xssmgr.config.reconfigure()
+	blankie.config.reconfigure()
 
 # Pipes to processes waiting for a notification for when the lock screen exits.
 unlock_notification_fds = []
@@ -73,7 +73,7 @@ def unlock():
 	state.locked = False
 
 	# Ensure we don't try to immediately relock / go to sleep
-	for session in xssmgr.session.get_sessions():
+	for session in blankie.session.get_sessions():
 		session.invalidate()
 
 	# Notify of unlocks.
@@ -83,28 +83,28 @@ def unlock():
 		locker_reply_fd.close()
 	unlock_notification_fds = []
 
-	xssmgr.config.reconfigure()
+	blankie.config.reconfigure()
 
 # -----------------------------------------------------------------------------
 # Exceptions
 
 # Represents an expected failure mode, which is unlikely to be due to
-# a bug in xssmgr.  In this case, we do not need to print an exception
+# a bug in Blankie.  In this case, we do not need to print an exception
 # stack trace; just print the error message and quit.
 class UserError(Exception):
 	pass
 
 # -----------------------------------------------------------------------------
-# Import xssmgr modules
+# Import Blankie modules
 # Placed after the declarations above, so that they can be used by the
 # imported modules.
 
-import xssmgr.config
-import xssmgr.daemon
-import xssmgr.server
-import xssmgr.module
-import xssmgr.session
-from xssmgr.logging import log
+import blankie.config
+import blankie.daemon
+import blankie.server
+import blankie.module
+import blankie.session
+from blankie.logging import log
 
 # -----------------------------------------------------------------------------
 # Core functionality: run core modules
@@ -123,7 +123,7 @@ def core_selector(wanted_modules):
 		('tty_idle', ),
 	])
 
-xssmgr.module.selectors['10-core'] = core_selector
+blankie.module.selectors['10-core'] = core_selector
 
 # -----------------------------------------------------------------------------
 # Entry point
@@ -133,11 +133,11 @@ def main():
 
 	if not args:
 		sys.stderr.write('''
-Usage: xssmgr COMMAND
+Usage: blankie COMMAND
 
 Commands:
-  start        Start the xssmgr daemon.
-  stop         Stop the xssmgr daemon.
+  start        Start the blankie daemon.
+  stop         Stop the blankie daemon.
   status       Print the current status.
   reload       Reload the configuration.
   lock         Lock the X session now.
@@ -147,34 +147,34 @@ Commands:
 
 	try:
 		os.makedirs(run_dir, exist_ok=True)
-		xssmgr.config.load()
+		blankie.config.load()
 
 		match args[0]:
 			case 'start':
-				ret = xssmgr.daemon.start()
+				ret = blankie.daemon.start()
 				if ret != 0:
 					return ret
 
-				session_spec = xssmgr.session.get_session()
+				session_spec = blankie.session.get_session()
 				if session_spec is not None:
 					log.info('Automatically attaching to current session %s.', session_spec)
-					xssmgr.session.remote_attach_or_detach(True, session_spec)
+					blankie.session.remote_attach_or_detach(True, session_spec)
 
 			case 'stop':
-				xssmgr.daemon.stop_remote()
+				blankie.daemon.stop_remote()
 
 			case 'reload':
-				xssmgr.server.notify(*args)
+				blankie.server.notify(*args)
 
 			case 'status' | 'lock' | 'unlock':
-				sys.stdout.buffer.write(xssmgr.server.query(*args))
+				sys.stdout.buffer.write(blankie.server.query(*args))
 
 			case 'attach' | 'detach':
-				xssmgr.session.remote_attach_or_detach(args[0] == 'attach')
+				blankie.session.remote_attach_or_detach(args[0] == 'attach')
 
 			# Internal commands:
 			case 'module':
-				xssmgr.module.cli_command(args[1:])
+				blankie.module.cli_command(args[1:])
 
 			case _:
 				log.critical('Unknown command: %r', args[0])

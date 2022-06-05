@@ -1,4 +1,4 @@
-# xssmgr.daemon - Daemon event queue and lifecycle
+# blankie.daemon - Daemon event queue and lifecycle
 
 import atexit
 import contextlib
@@ -9,12 +9,12 @@ import sys
 import threading
 import time
 
-import xssmgr
-import xssmgr.server
-from xssmgr.logging import log
+import blankie
+import blankie.server
+from blankie.logging import log
 
 # Daemon's PID file.
-pid_file = xssmgr.run_dir + '/daemon.pid'
+pid_file = blankie.run_dir + '/daemon.pid'
 
 class EventLoop:
 	queue = None
@@ -60,7 +60,7 @@ def signal_stop(signalnum, _frame):
 def sighup(signalnum, _frame):
 	log.info('Got signal %r - asynchronously requesting reload.', signal.strsignal(signalnum))
 	# ditto
-	call(xssmgr.config.reload)
+	call(blankie.config.reload)
 
 
 def shutdown_selector(wanted_modules):
@@ -72,8 +72,8 @@ def shutdown():
 	log.debug('Shutting down.')
 
 	# Stop all modules.
-	xssmgr.module.selectors['95-shutdown'] = shutdown_selector
-	xssmgr.module.update()
+	blankie.module.selectors['95-shutdown'] = shutdown_selector
+	blankie.module.update()
 
 	# Delete PID file. We are exiting.
 	with contextlib.suppress(FileNotFoundError):
@@ -115,7 +115,7 @@ def start():
 		event_loop_thread = threading.current_thread()
 
 		# Start on-boot modules.
-		xssmgr.config.reconfigure()
+		blankie.config.reconfigure()
 
 		# Signal readiness.
 		ready_r.close()
@@ -168,7 +168,7 @@ def stop_remote():
 	with open(pid_file, 'rb') as f:
 		daemon_pid = int(f.read())
 	log.debug('Stopping daemon (PID %d)...', daemon_pid)
-	xssmgr.server.notify('stop')
+	blankie.server.notify('stop')
 	while True:
 		try:
 			os.kill(daemon_pid, 0)

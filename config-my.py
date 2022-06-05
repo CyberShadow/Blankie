@@ -1,20 +1,20 @@
-# Sample xssmgr configuration file.
+# Sample Blankie configuration file.
 
 # The main duty of thes configuration file is to define a function,
-# config, which configures xssmgr according to the current
+# config, which configures Blankie according to the current
 # circumstances.
 
 # This function is re-evaluated every time the context (power / lock
 # screen status) changes, so we can use conditionals here to customize
 # the behavior.
 
-# All functionality in xssmgr is enabled by registering modules to
-# xssmgr hooks.  xssmgr offers three kinds of hooks:
+# All functionality in Blankie is enabled by registering modules to
+# Blankie hooks.  Blankie offers three kinds of hooks:
 #
 # - on_start - for modules which should run always, along with
-#   xssmgr.  These generally provide events that xssmgr reacts to.
+#   Blankie.  These generally provide events that blankie reacts to.
 #
-#   xssmgr automatically registers some built-in on_start modules to
+#   Blankie automatically registers some built-in on_start modules to
 #   provide core functionality, such as reacting to the system being
 #   idle for some time.
 #
@@ -26,7 +26,7 @@
 #   perform power actions after inactivity.
 #
 #   If the system is about to be incapacitated (suspended or
-#   hibernated), xssmgr starts all on_idle hooks (as if the system has
+#   hibernated), Blankie starts all on_idle hooks (as if the system has
 #   been idle for an infinite amount of time).
 #
 # - on_lock - for modules which should run when the lock screen
@@ -45,20 +45,20 @@
 #     c.on_lock('i3lock')
 
 # Below is a more elaborate configuration, which is close to the
-# author's personal xssmgr configuration.
+# author's personal Blankie configuration.
 
 import os.path
 import pathlib
 import socket
 import subprocess
 
-import xssmgr
+import blankie
 
 def config(c):
 	# Let's define some helper variables first.
 	# We want a much shorter delay if the lock screen is already active.
 
-	if not xssmgr.state.locked:
+	if not blankie.state.locked:
 		# Settings for when the lock screen is not active.
 
 		# We can have different settings for different machines by
@@ -119,11 +119,11 @@ def config(c):
 	# screen becomes visible, thus confirming that the machine is secure.
 	c.on_lock('i3lock', '--show-failed-attempts', '--image', os.path.expanduser('~/data/images/wallpaper/blurred.png'))
 
-import xssmgr.module
+import blankie.module
 
-# Custom on_lock xssmgr module: udiskie
+# Custom on_lock Blankie module: udiskie
 # Stops udiskie, which in turn stops automounting.
-class UDiskieModule(xssmgr.module.Module):
+class UDiskieModule(blankie.module.Module):
 	name = 'udiskie'
 
 	def start(self):
@@ -132,10 +132,10 @@ class UDiskieModule(xssmgr.module.Module):
 	def stop(self):
 		subprocess.check_call(['systemctl', '--user', 'start', 'cs-x-udiskie@:0.service'])
 
-# Custom on_lock xssmgr module: xkblayout
+# Custom on_lock Blankie module: xkblayout
 # I use a custom script which replaces the entire XKB configuration,
 # to avoid some programs still using QWERTY keys in their hotkey bindings.
-class XKBLayoutModule(xssmgr.module.Module):
+class XKBLayoutModule(blankie.module.Module):
 	name = 'xkblayout'
 
 	def start(self):

@@ -1,0 +1,8 @@
+#!/bin/sh
+
+# Blankie POSIX launch script
+
+# You can use this script to run Blankie directly from a source
+# checkout (without first "installing" it with pip / setup.py).
+
+PYTHONPATH="$(dirname "$0")"/src:"$PYTHONPATH" exec "${PYTHON-python}" -m blankie "$@"

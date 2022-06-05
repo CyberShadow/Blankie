@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Glue between the X11 Screen Saver Extension and xssmgr.
+# Glue between the X11 Screen Saver Extension and Blankie.
 # Implements an X screen saver, which merely communicates
 # events received from the X server to standard output.
 
@@ -41,7 +41,7 @@ class ScreenSaver:
             self.d.sync()
             if error:
                 raise Exception(
-                    'xssmgr/xss: Failed to set screensaver attributes; '
+                    'blankie/xss: Failed to set screensaver attributes; '
                     'is another one running?'
                     + ''.join(f'\n{e}' for e in error)
                 )
@@ -65,7 +65,7 @@ class ScreenSaver:
                 e = self.d.next_event()
 
                 if verbose:
-                    sys.stderr.write(f'xssmgr/xss: Got message: {e}\n')
+                    sys.stderr.write(f'blankie/xss: Got message: {e}\n')
 
                 if e.__class__.__name__ == screensaver.Notify.__name__:
                     print(
@@ -80,7 +80,7 @@ class ScreenSaver:
 
     def stop(self):
         if verbose:
-            sys.stderr.write('xssmgr/xss: Stopping.\n')
+            sys.stderr.write('blankie/xss: Stopping.\n')
         if self.screen:
             self.screen.root.screensaver_unset_attributes()
             self.screen.root.delete_property(self.d.get_atom('_MIT_SCREEN_SAVER_ID'))
@@ -97,7 +97,7 @@ def main():
 
     def stop(signum, _stack):
         if verbose:
-            sys.stderr.write(f'xssmgr/xss: Got signal {signum} - exiting. (Ignore errors below.)\n')
+            sys.stderr.write(f'blankie/xss: Got signal {signum} - exiting. (Ignore errors below.)\n')
         else:
             # Silence harmless exceptions due to disconnecting from a signal handler
             sys.stderr = open(os.devnull, 'w')
