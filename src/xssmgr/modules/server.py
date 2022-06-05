@@ -57,8 +57,8 @@ class ServerModule(xssmgr.module.Module):
 			server.handle_request()
 		self.log.debug('Stopping server thread.')
 
-	def server_reader(self, rfile, wfile):
-		command_str = rfile.readline()
+	def server_reader(self, handler):
+		command_str = handler.rfile.readline()
 
 		if not command_str.endswith(b'\n'):
 			self.log.warning('Received unterminated command: %r', command_str)
@@ -72,7 +72,7 @@ class ServerModule(xssmgr.module.Module):
 			return  # This was sent just to wake up the accept loop.
 
 		done_event = threading.Event()
-		xssmgr.daemon.call(self.server_run_command, rfile, wfile, done_event, *command)
+		xssmgr.daemon.call(self.server_run_command, handler, done_event, *command)
 
 		# Wait until the event is processed, to avoid the connection
 		# getting closed early.
@@ -80,17 +80,17 @@ class ServerModule(xssmgr.module.Module):
 
 	# Handle one command received from the socket.
 	# Runs in the main thread.
-	def server_run_command(self, rfile, wfile, done_event, *args):
+	def server_run_command(self, handler, done_event, *args):
 		try:
 			self.log.debug('Got command: %r', args)
 			match args[0]:
 				case 'ping':
-					wfile.write(b'pong\n')
+					handler.wfile.write(b'pong\n')
 				case 'status':
-					wfile.write(b'Currently locked: %r\n' % (xssmgr.state.locked,))
-					wfile.write(b'Running modules:\n')
-					wfile.write(b''.join(b'- %r\n' % (m,) for m in xssmgr.module.running_modules))
-					xssmgr.config.configurator.print_status(wfile)
+					handler.wfile.write(b'Currently locked: %r\n' % (xssmgr.state.locked,))
+					handler.wfile.write(b'Running modules:\n')
+					handler.wfile.write(b''.join(b'- %r\n' % (m,) for m in xssmgr.module.running_modules))
+					xssmgr.config.configurator.print_status(handler.wfile)
 				case 'stop':
 					xssmgr.daemon.stop()
 				case 'reload':
@@ -101,28 +101,28 @@ class ServerModule(xssmgr.module.Module):
 					self.log.security('Locking the screen due to user request.')
 					if not xssmgr.state.locked:
 						xssmgr.lock()
-						wfile.write(b'Locked.\n')
+						handler.wfile.write(b'Locked.\n')
 					else:
-						wfile.write(b'Already locked.\n')
+						handler.wfile.write(b'Already locked.\n')
 				case 'unlock':
 					self.log.security('Unlocking the screen due to user request.')
 					if xssmgr.state.locked:
 						xssmgr.unlock()
-						wfile.write(b'Unlocked.\n')
+						handler.wfile.write(b'Unlocked.\n')
 					else:
-						wfile.write(b'Already unlocked.\n')
+						handler.wfile.write(b'Already unlocked.\n')
 				case 'attach':
 					try:
 						xssmgr.session.attach(args[1:])
-						wfile.write(b'ok')
+						handler.wfile.write(b'ok')
 					except Exception as e:
-						wfile.write(e)
+						handler.wfile.write(e)
 				case 'detach':
 					try:
 						xssmgr.session.detach(args[1:])
-						wfile.write(b'ok')
+						handler.wfile.write(b'ok')
 					except Exception as e:
-						wfile.write(e)
+						handler.wfile.write(e)
 				case _:
 					self.log.warning('Ignoring unknown daemon command: %r', args)
 		finally:
@@ -132,7 +132,7 @@ class ServerModule(xssmgr.module.Module):
 
 class Handler(socketserver.StreamRequestHandler):
 	def handle(self):
-		self.server.module.server_reader(self.rfile, self.wfile)
+		self.server.module.server_reader(self)
 
 class SocketServer(socketserver.ThreadingMixIn, socketserver.UnixStreamServer):
 	def __init__(self, module):
