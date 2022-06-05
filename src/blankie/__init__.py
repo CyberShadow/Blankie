@@ -11,7 +11,7 @@ import sys
 
 # This session's runtime directory.  Modules may put state here.
 run_dir = os.environ.setdefault(
-	'XSSMGR_RUN_DIR',
+	'BLANKIE_RUN_DIR',
 	os.getenv(
 		'XDG_RUNTIME_DIR',
 		'/tmp/' + str(os.getuid())

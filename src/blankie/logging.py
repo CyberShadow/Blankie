@@ -21,7 +21,7 @@ class Logger(logging.getLoggerClass()):
 logging.setLoggerClass(Logger)
 
 logging.basicConfig(
-	format=os.getenv('XSSMGR_LOG_FORMAT', '%(name)s: %(message)s'),
+	format=os.getenv('BLANKIE_LOG_FORMAT', '%(name)s: %(message)s'),
 	level=[
 		logging.CRITICAL,
 		logging.ERROR,
@@ -30,6 +30,6 @@ logging.basicConfig(
 		logging.INFO,
 		logging.DEBUG,
 		TRACE,
-	][4 + int(os.getenv('XSSMGR_VERBOSE', '0'))]
+	][4 + int(os.getenv('BLANKIE_VERBOSE', '0'))]
 )
 log = logging.getLogger('blankie')

@@ -11,7 +11,7 @@ import sys
 from Xlib import display, Xatom
 import Xlib_ext_screensaver as screensaver
 
-verbose = int(os.getenv('XSSMGR_VERBOSE', '0'))
+verbose = int(os.getenv('BLANKIE_VERBOSE', '0'))
 
 class ScreenSaver:
     d = None

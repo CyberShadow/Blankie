@@ -9,7 +9,7 @@ import socket
 import blankie
 
 # Path to the UNIX socket filesystem object.
-path = os.environ.setdefault('XSSMGR_SOCKET', blankie.run_dir + '/daemon.sock')
+path = os.environ.setdefault('BLANKIE_SOCKET', blankie.run_dir + '/daemon.sock')
 
 # -----------------------------------------------------------------------------
 # Daemon communication
