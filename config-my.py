@@ -98,7 +98,7 @@ def config(c):
 
 	# Prevent TTY switching.
 	# No need to worry if you forgot to log out on a TTY before walking away.
-	c.on_lock('physlock')
+	c.on_lock('physlock_vtswitch')
 
 	# Pause dunst notifications.
 	# Don't want your PMs to pop up on top of the lock screen.
