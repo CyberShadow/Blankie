@@ -17,28 +17,38 @@ class Configurator:
 
 	def reset(self):
 		# Modules registered in the configuration.
-		self.on_start_modules = []
-		self.on_lock_modules = []
-		self.on_idle_modules = []
+		self.modules = []
+		self.idle_timers = []
 
-	def on_start(self, module, *parameters):
-		'''Called from the user's configuration to register an on-start module.'''
-		self.on_start_modules.append((module, *parameters))
+	# Re-evaluate the configuration and update our state to match.
+	def evaluate(self):
+		log.debug('Reconfiguring.')
 
-	def on_lock(self, module, *parameters):
-		'''Called from the user's configuration to register an on-lock module.'''
-		self.on_lock_modules.append((module, *parameters))
+		# Reset settings before (re-)evaluating the user configuration.
+		self.reset()
 
-	def on_idle(self, idle_seconds, module, *parameters):
-		'''Called from the user's configuration to register an on-idle module.'''
-		if not isinstance(idle_seconds, int) or idle_seconds <= 0:
-			raise blankie.UserError('Invalid idle time - must be a positive integer')
-		self.on_idle_modules.append((idle_seconds, (module, *parameters)))
+		if not module:
+			log.warning('No configuration!')
+			return
+
+		# Evaluate the user-defined configuration function.
+		module.config(self)
+
+	# Return the list of on_idle events' trigger times (in seconds of
+	# ongoing idle time), in increasing order.
+	def get_schedule(self):
+		s = set()
+		for timeout in self.idle_timers:
+			s.add(timeout)
+		return sorted(s)
 
 	def selector(self, wanted_modules):
 		'''Module selector which applies the user's configuration.'''
 
-		schedule = get_schedule()
+		# Re-run the user configuration function
+		self.evaluate()
+
+		schedule = self.get_schedule()
 
 		# Core modules:
 
@@ -48,31 +58,48 @@ class Configurator:
 		if len(schedule) > 0:
 			wanted_modules.append(('xset', schedule[0]))
 
-		# React to locking/unlocking by starting/stopping on_lock modules.
-		if blankie.state.locked:
-			wanted_modules.extend(self.on_lock_modules)
-
 		idle_time = blankie.get_idle_time()
 		if idle_time >= 0 and len(schedule) > 0:
 			# Wakes us up when it's time to run the next on_idle hook(s).
 			wanted_modules.append(('timer', frozenset(schedule)))
 
 		# User-configured modules:
-
-		wanted_modules.extend(self.on_start_modules)
-
-		for (timeout, module_spec) in self.on_idle_modules:
-			if idle_time >= timeout:
-				wanted_modules.append(module_spec)
+		wanted_modules.extend(self.modules)
 
 	def print_status(self, f):
 		'''Used in 'blankie status' command.'''
-		f.write(b'Configured on_start modules:\n')
-		f.write(b''.join(b'- %r\n' % (spec,) for spec in self.on_start_modules))
-		f.write(b'Configured on_idle modules:\n')
-		f.write(b''.join(b'- %d %r\n' % line for line in self.on_idle_modules))
-		f.write(b'Configured on_lock modules:\n')
-		f.write(b''.join(b'- %r\n' % (spec,) for spec in self.on_lock_modules))
+		f.write(b'Configuration-requested modules:\n')
+		f.write(b''.join(b'- %r\n' % (spec,) for spec in self.modules))
+
+	# Public API follows:
+
+	def run_module(self, module_name, *parameters):
+		'''Called from the user's configuration to request the given module.'''
+		self.modules.append((module_name, *parameters))
+
+	def is_locked(self) -> bool:
+		'''Called from the user's configuration to check if the system
+		is currently locked.'''
+		return blankie.state.locked
+
+	def is_idle_for(self, idle_seconds) -> bool:
+		'''Called from the user's configuration to check if the system
+		is idle for at least this many seconds.'''
+		if not isinstance(idle_seconds, int) or idle_seconds <= 0:
+			raise blankie.UserError('Invalid idle time - must be a positive integer')
+		idle_time = blankie.get_idle_time()
+		if idle_seconds < idle_time:
+			return True
+		else:
+			# The system has not yet been idle for the given duration,
+			# so return False. However, since the behavior of the
+			# configuration function will change once the system
+			# becomes idle for the given duration, also make a note of
+			# this so that we will call the configuration function
+			# again once this call's return value will change.
+			self.idle_timers.append(idle_seconds)
+			return False
+
 
 configurator = Configurator()
 blankie.module.selectors['20-config'] = configurator.selector
@@ -105,29 +132,12 @@ def load():
 	log.warning('WARNING: No configuration file found.')
 	log.warning('Please check installation or create %r.', config_files[0])
 
-# Re-evaluate the configuration and update our state to match.
-def reconfigure():
-	log.debug('Reconfiguring.')
-
-	# Reset settings before (re-)evaluating the user configuration.
-	configurator.reset()
-
-	# Evaluate the user-defined configuration function.
-	module.config(configurator)
-
-	# Update our state to match.
-	blankie.module.update()
-
 # Reload the configuration file and re-apply the configuration.
 def reload():
 	log.info('Reloading configuration.')
 	load()
-	reconfigure()
+	blankie.module.update()
 
-# Return the list of on_idle events' trigger times (in seconds of
-# ongoing idle time), in increasing order.
-def get_schedule():
-	s = set()
-	for (timeout, _module_spec) in configurator.on_idle_modules:
-		s.add(timeout)
-	return sorted(s)
+# Re-evaluate the configuration and update our state to match.
+def reconfigure():
+	blankie.module.update()
