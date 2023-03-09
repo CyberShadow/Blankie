@@ -140,8 +140,10 @@ Commands:
   stop         Stop the blankie daemon.
   status       Print the current status.
   reload       Reload the configuration.
-  lock         Lock the X session now.
-  unlock       Unlock the X session now.
+  lock         Lock the system now.
+  unlock       Unlock the system now.
+  attach       Attach to the current session.
+  detach       Detach from the current session.
 ''')
 		return 2
 
