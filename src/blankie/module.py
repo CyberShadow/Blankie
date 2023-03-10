@@ -73,7 +73,7 @@ def load_module(module_name):
 		module_file = module_dir  + '/' + module_name.replace('.', '/') + '.py'
 		if os.path.exists(module_file):
 			log.debug('Loading module %r from %r', module_name, module_file)
-			python_module_name = 'blankie.modules' + module_name
+			python_module_name = 'blankie.modules.' + module_name
 
 			# https://docs.python.org/3/library/importlib.html#importing-a-source-file-directly
 			spec = importlib.util.spec_from_file_location(python_module_name, module_file)
