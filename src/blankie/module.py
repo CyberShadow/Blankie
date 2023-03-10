@@ -27,6 +27,11 @@ class Module:
 	def stop(self):
 		pass
 
+	# Optional dependency specification.
+	# Returns a list of module specs.
+	def get_dependencies(self):
+		return []
+
 	# Optional reconfiguration function.
 	# Should accept the same arguments as the constructor.
 	# Will be called on a running (started) module when Blankie wants
@@ -209,6 +214,17 @@ def update():
 		selector = selectors[key]
 		log.trace('Calling module selector: %r', selector)
 		selector(wanted_modules)
+
+	# Add dependencies
+	with_dependencies = []
+	def add(module_spec):
+		module = get(module_spec)
+		for dependency in module.get_dependencies():
+			add(dependency)
+		with_dependencies.append(module_spec)
+	for module_spec in wanted_modules:
+		add(module_spec)
+	wanted_modules = with_dependencies
 
 	# Deduplicate
 	wanted_modules = list(dict.fromkeys(wanted_modules))
