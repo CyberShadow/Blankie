@@ -42,14 +42,27 @@ class State:
 	# Modified by the lock module, as well as the lock/unlock commands.
 	locked = False
 
+	# True when the system is about to go to sleep (or otherwise be
+	# incapacitated).
+	sleeping = False
+
 	def __str__(self):
-		return 'is locked: %s' % (
-			self.locked
+		return 'is locked: %s, sleeping: %s' % (
+			self.locked,
+			self.sleeping,
 		)
 
 state = State()
 
+# Return the overall system idle time, as a number of seconds.
+# This function may return one of two special values:
+# - -math.inf: when the system, in its current state,
+#   cannot become idle, no matter how much time will pass.
+# - math.inf: when the system is about to go to sleep
+#   (or otherwise be incapacitated)
 def get_idle_time():
+	if state.sleeping:
+		return math.inf
 	return min((session.get_idle_time() for session in blankie.session.get_sessions()),
 			   default=-math.inf)
 
