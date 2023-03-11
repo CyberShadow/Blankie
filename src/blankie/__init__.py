@@ -122,6 +122,14 @@ from blankie.logging import log
 # -----------------------------------------------------------------------------
 # Core functionality: run core modules
 
+is_systemd = False
+try:
+	is_systemd = os.readlink('/bin/init').endswith('/systemd')
+except Exception:
+	pass
+if is_systemd:
+	log.debug('Detected systemd - enabling systemd-logind integration')
+
 def core_selector(wanted_modules):
 	wanted_modules.extend([
 		# Receives commands / events from other processes.
@@ -135,6 +143,12 @@ def core_selector(wanted_modules):
 		# Required for TTY sessions to work properly.
 		('tty_idle', ),
 	])
+	if is_systemd:
+		wanted_modules.append(
+			# Connects to D-Bus to intercept the system going to sleep.
+			# Required to reliably lock the system first.
+			('logind',)
+		)
 
 blankie.module.selectors['10-core'] = core_selector
 
