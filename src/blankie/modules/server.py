@@ -116,13 +116,13 @@ class ServerModule(blankie.module.Module):
 						blankie.session.attach(args[1:])
 						handler.wfile.write(b'ok')
 					except Exception as e:
-						handler.wfile.write(e)
+						handler.wfile.write(bytes(str(e), encoding="utf-8"))
 				case 'detach':
 					try:
 						blankie.session.detach(args[1:])
 						handler.wfile.write(b'ok')
 					except Exception as e:
-						handler.wfile.write(e)
+						handler.wfile.write(bytes(str(e), encoding="utf-8"))
 				case _:
 					self.log.warning('Ignoring unknown daemon command: %r', args)
 		finally:
