@@ -1,0 +1,15 @@
+#!/usr/bin/env nix-shell
+#! nix-shell -i sh
+#! nix-shell -p python3Packages.inotify-simple
+#! nix-shell -p python3Packages.xlib
+#! nix-shell -p python3Packages.dbus-python
+#! nix-shell -p python3Packages.pygobject3
+#! nix-shell -I nixpkgs=https://github.com/NixOS/nixpkgs/archive/bff917a3ed37b1f9e705b5c07210acd295691770.tar.gz
+
+# Blankie Nix launch script
+
+# You can use this script to run Blankie directly from a source
+# checkout (without first "installing" it with pip / setup.py,
+# or installing dependencies, provided you have Nix).
+
+exec "$(dirname "$0")"/blankie "$@"
