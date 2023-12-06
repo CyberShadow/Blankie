@@ -54,17 +54,18 @@ class State:
 
 state = State()
 
-# Return the overall system idle time, as a number of seconds.
+# Return the point in time since the system was active,
+# as a number of seconds since the UNIX epoch.
 # This function may return one of two special values:
-# - -math.inf: when the system, in its current state,
+# - math.inf: when the system, in its current state,
 #   cannot become idle, no matter how much time will pass.
-# - math.inf: when the system is about to go to sleep
+# - -math.inf: when the system is about to go to sleep
 #   (or otherwise be incapacitated)
-def get_idle_time():
+def get_idle_since():
 	if state.sleeping:
 		return math.inf
-	return min((session.get_idle_time() for session in blankie.session.get_sessions()),
-			   default=-math.inf)
+	return max((session.get_idle_since() for session in blankie.session.get_sessions()),
+			   default=math.inf)
 
 # -----------------------------------------------------------------------------
 # Locking

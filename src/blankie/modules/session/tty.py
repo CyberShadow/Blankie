@@ -29,14 +29,12 @@ class TTYSession(blankie.session.Session):
 			os.close(self.fd)
 			self.fd = None
 
-	def get_idle_time(self):
-		now = time.time()
-		tty_time = os.path.getmtime(self.tty)
-		return now - tty_time
+	def get_idle_since(self):
+		return os.path.getmtime(self.tty)
 
 	def __str__(self):
 		return 'last modified: %s seconds ago' % (
-			self.get_idle_time()
+			time.time() - self.get_idle_time()
 		)
 
 

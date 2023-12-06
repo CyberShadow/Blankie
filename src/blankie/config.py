@@ -3,6 +3,7 @@
 import importlib
 import os
 import sys
+import time
 
 import blankie
 import blankie.module
@@ -58,7 +59,7 @@ class Configurator:
 		if len(schedule) > 0:
 			wanted_modules.append(('xset', schedule[0]))
 
-		idle_time = blankie.get_idle_time()
+		idle_time = time.time() - blankie.get_idle_since()
 		if idle_time >= 0 and len(schedule) > 0:
 			# Wakes us up when it's time to run the next on_idle hook(s).
 			wanted_modules.append(('timer', frozenset(schedule)))
@@ -87,7 +88,7 @@ class Configurator:
 		is idle for at least this many seconds.'''
 		if not isinstance(idle_seconds, int) or idle_seconds <= 0:
 			raise blankie.UserError('Invalid idle time - must be a positive integer')
-		idle_time = blankie.get_idle_time()
+		idle_time = time.time() - blankie.get_idle_since()
 		if idle_seconds < idle_time:
 			return True
 		else:

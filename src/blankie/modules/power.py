@@ -17,7 +17,7 @@ class PowerModule(blankie.module.Module):
 		self.power_action = action
 
 	def start(self):
-		if blankie.get_idle_time() == math.inf:
+		if blankie.get_idle_since() == -math.inf:
 			# The system is already executing a power action.
 			return
 		subprocess.check_call(['systemctl', self.power_action])

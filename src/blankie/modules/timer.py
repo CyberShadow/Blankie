@@ -5,6 +5,7 @@
 
 import math
 import threading
+import time
 
 import blankie
 import blankie.daemon
@@ -37,7 +38,7 @@ class TimerModule(blankie.module.Module):
 	def timer_start_next(self):
 		self.timer_cancel()
 
-		idle_time = blankie.get_idle_time()
+		idle_time = time.time() - blankie.get_idle_since()
 		if idle_time < 0:
 			return  # wake-lock
 

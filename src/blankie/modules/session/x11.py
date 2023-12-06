@@ -3,6 +3,7 @@
 import math
 import os
 import subprocess
+import time
 
 import blankie
 
@@ -22,29 +23,30 @@ class X11Session(blankie.session.Session):
 	# longer than our first on_idle hook.
 	idle = False
 
-	# X server idle time (as provided by xprintidle), in seconds
-	idle_time = -1
+	# Point in time since the X server is idle, in seconds since UNIX epoch
+	idle_since = -1
 
 	def __init__(self, display):
 		super().__init__()
 		self.display = display
 
-	def get_idle_time(self):
+	def get_idle_since(self):
 		if not self.idle:
-			return -math.inf
-		if self.idle_time == -1:
-			self.idle_time = int(subprocess.check_output(
+			return math.inf
+		if self.idle_since == -1:
+			idle_time = int(subprocess.check_output(
 				['xprintidle'],
 				env=dict(os.environ, DISPLAY=self.display)
 			)) / 1000
-		return self.idle_time
+			self.idle_since = time.time() - idle_time
+		return self.idle_since
 
 	def invalidate(self):
-		self.idle_time = -1
+		self.idle_since = -1
 
 	def __str__(self):
 		return 'is idle: %s, idle time: %s' % (
-			self.idle, self.idle_time
+			self.idle, time.time() - self.idle_since
 		)
 
 

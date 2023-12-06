@@ -15,15 +15,16 @@ from blankie.logging import log
 # module dependency and cleanup mechanisms.
 
 class Session(blankie.module.Module):
-	# Return this session's idle time in seconds.
+	# Return the point in time since this session was active,
+	# as a number of seconds since the UNIX epoch.
 	# If this session cannot, in its current state (i.e. until the
 	# next call to invalidate), become idle, no matter how much time
 	# will pass (e.g. due to a "wake-lock"), this can be indicated by
-	# returning -math.inf.
-	def get_idle_time(self):
+	# returning math.inf.
+	def get_idle_since(self):
 		raise NotImplementedError()
 
-	# Requests that the next call to get_idle_time returns fresh
+	# Requests that the next call to get_idle_since returns fresh
 	# results.
 	def invalidate(self):
 		pass
