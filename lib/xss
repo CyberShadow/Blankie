@@ -9,7 +9,7 @@ import signal
 import sys
 
 from Xlib import display, Xatom
-import Xlib_ext_screensaver as screensaver
+import Xlib.ext.screensaver as screensaver
 
 verbose = int(os.getenv('BLANKIE_VERBOSE', '0'))
 
@@ -91,7 +91,6 @@ class ScreenSaver:
 
 def main():
     disp = display.Display()
-    screensaver.load(disp)
 
     ss = ScreenSaver(disp)
 
