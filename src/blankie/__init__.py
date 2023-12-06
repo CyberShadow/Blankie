@@ -159,11 +159,11 @@ blankie.module.selectors['10-core'] = core_selector
 def main():
 	args = sys.argv[1:]
 
-	if not args:
-		sys.stderr.write('''
+	help_text = '''
 Usage: blankie COMMAND
 
 Commands:
+  help         Print this message.
   start        Start the blankie daemon.
   stop         Stop the blankie daemon.
   status       Print the current status.
@@ -172,7 +172,10 @@ Commands:
   unlock       Unlock the system now.
   attach       Attach to the current session.
   detach       Detach from the current session.
-''')
+'''
+
+	if not args:
+		sys.stderr.write(help_text)
 		return 2
 
 	try:
@@ -180,6 +183,9 @@ Commands:
 		blankie.config.load()
 
 		match args[0]:
+			case 'help':
+				sys.stdout.write(help_text)
+
 			case 'start':
 				ret = blankie.daemon.start()
 				if ret != 0:
