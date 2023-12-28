@@ -54,6 +54,10 @@ class Module:
 	def server_command(self, *_args):
 		raise NotImplementedError()
 
+	# Handle a packet received from the network bus.
+	def bus_packet(self, packet):
+		pass
+
 # Module search path.  Populated in load_config.
 module_dirs = []
 
