@@ -22,7 +22,7 @@ class GLibModule(blankie.module.Module):
 		self.glib_thread.start()
 
 	def stop(self):
-		self.mainloop.quit()
+		self.run_async(self.mainloop.quit)
 		self.glib_thread.join()
 		self.mainloop = None
 		self.glib_thread = None
