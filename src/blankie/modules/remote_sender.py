@@ -16,13 +16,14 @@ class RemoteSenderModule(blankie.module.Module):
 		self.bus_client_spec = ('bus_client', bus_addr)
 		self.timer = None
 		self.last_idle_since = 0
+		self.last_locked = False
 
 	def get_dependencies(self):
 		return [self.bus_client_spec]
 
 	def start(self):
 		# TODO: Replace always-on timer with some kind of hook
-		# which gets called when the idle-since timestamp changes.
+		# which gets called when the idle-since timestamp / lock state changes.
 		self.schedule_timer()
 
 	def schedule_timer(self):
@@ -55,3 +56,11 @@ class RemoteSenderModule(blankie.module.Module):
 			}
 			blankie.module.get(self.bus_client_spec).send_message(message)
 			self.last_idle_since = idle_since
+
+		is_locked = blankie.state.locked
+		if (force and is_locked) or self.last_locked != is_locked:
+			message = {
+				'type': 'lock' if is_locked else 'unlock',
+			}
+			blankie.module.get(self.bus_client_spec).send_message(message)
+			self.last_locked = is_locked

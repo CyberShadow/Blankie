@@ -19,5 +19,12 @@ class RemoteSession(blankie.session.Session):
 		return self.idle_since
 
 	def bus_packet(self, packet):
-		if packet['type'] == 'message' and packet['message']['type'] == 'idle_since':
-			self.idle_since = packet['message']['idle_since']
+		if packet['type'] == 'message':
+			if packet['message']['type'] == 'idle_since':
+				self.idle_since = packet['message']['idle_since']
+			elif packet['message']['type'] == 'lock' and not blankie.state.locked:
+				self.log.security(f'Locking (by remote instance {self.instance_id})')
+				blankie.lock()
+			elif packet['message']['type'] == 'unlock' and blankie.state.locked:
+				self.log.security(f'Unlocking (by remote instance {self.instance_id})')
+				blankie.unlock()
