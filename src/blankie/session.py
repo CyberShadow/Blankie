@@ -21,6 +21,7 @@ class Session(blankie.module.Module):
 	# next call to invalidate), become idle, no matter how much time
 	# will pass (e.g. due to a "wake-lock"), this can be indicated by
 	# returning math.inf.
+	# This function may return math.nan to ignore this session.
 	def get_idle_since(self):
 		raise NotImplementedError()
 

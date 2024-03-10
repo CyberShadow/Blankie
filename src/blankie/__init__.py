@@ -64,14 +64,19 @@ state = State()
 def get_idle_since():
 	if state.sleeping:
 		return math.inf
+
 	sessions = blankie.session.get_sessions()
-	if not sessions:
+	idle_times = [session.get_idle_since() for session in sessions]
+	idle_times = list(filter(lambda t: not math.isnan(t), idle_times))
+
+	if not idle_times:
 		# We have to return math.inf here (instead of -math.inf,
 		# which may seem more logical) because otherwise blankie
 		# will lock the system when there are no sessions, and
 		# will not automatically unlock it when a session does connect.
 		return math.inf
-	return max((session.get_idle_since() for session in sessions))
+
+	return max(idle_times)
 
 # -----------------------------------------------------------------------------
 # Locking
