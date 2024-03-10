@@ -127,14 +127,22 @@ def start(fork=True):
 			ready_w.write(b'ok')
 			ready_w.close()
 
-		# Run the event loop.
-		_event_loop.run()
+		status=0
 
-		# Event loop exited gracefully.
-		log.debug('Daemon is exiting.')
+		# Run the event loop.
+		try:
+			_event_loop.run()
+		except Exception:
+			log.exception('Fatal error in event loop!')
+			status=1
+		else:
+			# Event loop exited gracefully.
+			log.debug('Daemon is exiting.')
+
+		stop()
 
 		# Ensure the fork does not continue into the parent's code.
-		sys.exit(0)
+		sys.exit(status)
 
 	# Clear our exit trap, as it should now run in the main loop subshell.
 	atexit.unregister(shutdown)
