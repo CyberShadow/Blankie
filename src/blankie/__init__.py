@@ -196,6 +196,10 @@ Commands:
 					log.info('Automatically attaching to current session %s.', session_spec)
 					blankie.session.remote_attach_or_detach(True, session_spec)
 
+			# Undocumented, meant for debugging.
+			case 'debug-run-in-foreground':
+				return blankie.daemon.start(fork=False)
+
 			case 'stop':
 				blankie.daemon.stop_remote()
 

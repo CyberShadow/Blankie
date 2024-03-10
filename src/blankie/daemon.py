@@ -83,18 +83,22 @@ def shutdown():
 
 
 # Daemon entry point.
-def start():
+def start(fork=True):
 	'''Starts the daemon in a fork.'''
 
 	# Ensure a clean shut-down in any eventuality.
 	atexit.register(shutdown)
 
-	# Create an anonymous pipe used to signal startup success.
-	(ready_r, ready_w) = os.pipe()
-	(ready_r, ready_w) = (os.fdopen(ready_r, 'rb'), os.fdopen(ready_w, 'wb'))
+	if fork:
+		# Create an anonymous pipe used to signal startup success.
+		(ready_r, ready_w) = os.pipe()
+		(ready_r, ready_w) = (os.fdopen(ready_r, 'rb'), os.fdopen(ready_w, 'wb'))
 
-	# Now, fork away the daemon main loop.
-	daemon_pid = os.fork()
+		# Now, fork away the daemon main loop.
+		daemon_pid = os.fork()
+	else:
+		daemon_pid = 0
+
 	if daemon_pid == 0:
 		# Inside the forked process: set up and run the daemon.
 
@@ -118,9 +122,10 @@ def start():
 		blankie.config.reconfigure()
 
 		# Signal readiness.
-		ready_r.close()
-		ready_w.write(b'ok')
-		ready_w.close()
+		if fork:
+			ready_r.close()
+			ready_w.write(b'ok')
+			ready_w.close()
 
 		# Run the event loop.
 		_event_loop.run()
