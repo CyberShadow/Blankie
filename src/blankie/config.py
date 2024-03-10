@@ -20,6 +20,7 @@ class Configurator:
 		# Modules registered in the configuration.
 		self.modules = []
 		self.idle_timers = []
+		self.bus_key = None
 
 	# Re-evaluate the configuration and update our state to match.
 	def evaluate(self):

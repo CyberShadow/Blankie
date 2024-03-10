@@ -1,6 +1,7 @@
 # blankie.modules.bus_client - optional on_start module
 # Connects to a Blankie bus, and allows receiving and sending messages to it.
 
+import hashlib
 import json
 import socket
 import time
@@ -47,7 +48,7 @@ class BusClientModule(blankie.module.Module):
 			try:
 				self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 				self.socket.connect(self.address)
-				self.send({'type': 'hello', 'id': str(self.instance_id)})
+				self.log.trace('Connected to bus.')
 
 				try:
 					for line in self.socket.makefile():
@@ -69,6 +70,20 @@ class BusClientModule(blankie.module.Module):
 					self.log.trace('Bus client error (disconnected): %s', e)
 
 	def handle_packet(self, packet):
+		if packet['type'] == 'challenge':
+			bus_key = blankie.config.configurator.bus_key
+			assert bus_key is not None, 'Bus key is not configured'
+
+			challenge = bytes.fromhex(packet['challenge'])
+			digest = hashlib.sha256(bus_key + challenge).hexdigest()
+
+			self.send({
+				'type': 'hello',
+				'digest' : digest,
+				'id': str(self.instance_id),
+			})
+			return
+
 		for module_spec in blankie.module.running_modules:
 			blankie.module.get(module_spec).bus_packet(packet)
 

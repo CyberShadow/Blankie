@@ -3,7 +3,9 @@
 # Does not do any logic itself, and merely passes messages around.
 # All logic glue is done by the client module.
 
+import hashlib
 import json
+import secrets
 import socket
 import threading
 
@@ -85,6 +87,7 @@ class ClientHandler:
 		self.addr = addr
 		self.instance_id = None
 		self.recv_thread = None
+		self.challenge = secrets.token_bytes(64)
 
 	# Runs on main thread
 	def start(self):
@@ -118,6 +121,8 @@ class ClientHandler:
 	# Runs on its own thread
 	def recv_loop(self):
 		try:
+			self.send({'type': 'challenge', 'challenge': self.challenge.hex()})
+
 			for line in self.socket.makefile():
 				packet = json.loads(line.strip())
 				blankie.daemon.call(self.handle_packet, packet)
@@ -132,8 +137,16 @@ class ClientHandler:
 				if self.instance_id is not None:
 					raise Exception('Client already identified')
 
-				self.instance_id = packet['id']
+				bus_key = blankie.config.configurator.bus_key
+				assert bus_key is not None, 'Bus key is not configured'
 
+				digest_expected = hashlib.sha256(bus_key + self.challenge).digest()
+				digest_provided = bytes.fromhex(packet['digest'])
+				ok = secrets.compare_digest(digest_expected, digest_provided)
+				if not ok:
+					raise Exception('Authentication failed from client %s' % self.addr)
+
+				self.instance_id = packet['id']
 				if self.instance_id in self.server.clients:
 					self.server.log.warning('Duplicate client instance ID: %s', self.instance_id)
 					self.server.clients[self.instance_id].stop()
