@@ -1,10 +1,26 @@
 #!/usr/bin/env nix-shell
 #! nix-shell -i sh
-#! nix-shell -p python3Packages.inotify-simple
-#! nix-shell -p python3Packages.xlib
+#! nix-shell --keep XDG_RUNTIME_DIR
+#! nix-shell --keep XDG_CONFIG_HOME
+#! nix-shell --keep XDG_CONFIG_DIRS
+#! nix-shell --keep BLANKIE_VERBOSE
+#! nix-shell --keep BLANKIE_LOG_FORMAT
+#! nix-shell -p dunst
+#! nix-shell -p procps
 #! nix-shell -p python3Packages.dbus-python
+#! nix-shell -p python3Packages.inotify-simple
 #! nix-shell -p python3Packages.pygobject3
+#! nix-shell -p python3Packages.xlib
+#! nix-shell -p systemd
+#! nix-shell -p upower
+#! nix-shell -p xorg.setxkbmap
+#! nix-shell -p xorg.xset
 #! nix-shell -I nixpkgs=https://github.com/NixOS/nixpkgs/archive/bff917a3ed37b1f9e705b5c07210acd295691770.tar.gz
+
+# not included above:
+# - physlock, as it must be suid-root
+# - i3lock, as it must be installed alongside its PAM module
+# (not --pure for the same reasons)
 
 # Blankie Nix launch script
 
