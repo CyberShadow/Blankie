@@ -90,6 +90,10 @@ class ServerModule(blankie.module.Module):
 					handler.wfile.write(b'Currently locked: %r\n' % (blankie.state.locked,))
 					handler.wfile.write(b'Running modules:\n')
 					handler.wfile.write(b''.join(b'- %r\n' % (m,) for m in blankie.module.running_modules))
+					handler.wfile.write(b'Sessions:\n')
+					for spec in blankie.session.session_specs:
+						module = blankie.module.get(spec)
+						handler.wfile.write(b'- %r - %r\n' % (spec, module.get_idle_since()))
 					blankie.config.configurator.print_status(handler.wfile)
 				case 'stop':
 					blankie.daemon.stop()
