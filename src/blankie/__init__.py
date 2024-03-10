@@ -147,6 +147,9 @@ def core_selector(wanted_modules):
 		# Receives commands / events from other processes.
 		('server', ),
 
+		# Receives events from other instances.
+		('remote_receiver', ),
+
 		# Receives idle / unidle events from X.
 		# Required for X11 sessions to work properly.
 		('xss', ),
