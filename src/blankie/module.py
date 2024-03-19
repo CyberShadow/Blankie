@@ -114,8 +114,7 @@ def get(module_spec):
 		module_classes = search(Module)
 
 	assert len(module_classes) > 0, 'No module class defined with name == %r' % (module_name,)
-	assert len(module_classes) == 1, 'More than one module class defined with name == %r' % (module_name,)
-	module_class = module_classes[0]
+	module_class = module_classes[-1]  # Use the most recently defined class
 
 	# Instantiate
 	module = module_class(*module_spec[1:])
