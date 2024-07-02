@@ -15,6 +15,8 @@
 #! nix-shell -p upower
 #! nix-shell -p xorg.setxkbmap
 #! nix-shell -p xorg.xset
+#! nix-shell -p acpilight
+#! nix-shell -p xprintidle
 #! nix-shell -I nixpkgs=https://github.com/NixOS/nixpkgs/archive/bff917a3ed37b1f9e705b5c07210acd295691770.tar.gz
 
 # not included above:
