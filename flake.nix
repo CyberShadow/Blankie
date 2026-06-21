@@ -16,7 +16,7 @@
       # they must be installed on the host and found on PATH at runtime.
       runtimeDeps = pkgs: with pkgs; [
         dunst procps systemd upower acpilight xprintidle
-        xorg.setxkbmap xorg.xset
+        setxkbmap xset
       ];
     in
     {
