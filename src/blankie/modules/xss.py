@@ -34,7 +34,15 @@ class XSSPerSessionModule(blankie.module.Module):
 			self.xss_process = subprocess.Popen(
 				[sys.executable, '-m', 'blankie.xss_helper'],
 				stdout = subprocess.PIPE,
-				env=dict(os.environ, DISPLAY=self.display),
+				# Forward our resolved import path so the helper can find
+				# the blankie package and Xlib regardless of how the
+				# interpreter was launched (source checkout or installed,
+				# possibly Nix-wrapped, copy).
+				env=dict(
+					os.environ,
+					DISPLAY=self.display,
+					PYTHONPATH=os.pathsep.join(p for p in sys.path if p),
+				),
 			)
 
 			if self.xss_process.stdout.readline() != b'init\n':
