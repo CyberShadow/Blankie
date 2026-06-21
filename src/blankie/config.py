@@ -1,6 +1,6 @@
 # blankie.config - loads, evaluates, and manages the user's configuration
 
-import importlib
+import importlib.util
 import os
 import sys
 import time

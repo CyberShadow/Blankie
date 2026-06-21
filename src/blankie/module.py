@@ -1,6 +1,6 @@
 # blankie.module - core module machinery
 
-import importlib
+import importlib.util
 import os
 import shlex
 import sys
