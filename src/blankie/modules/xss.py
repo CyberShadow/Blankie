@@ -5,6 +5,7 @@
 
 import os
 import subprocess
+import sys
 import threading
 
 import blankie
@@ -31,7 +32,7 @@ class XSSPerSessionModule(blankie.module.Module):
 		# Start xss
 		if self.xss_process is None:
 			self.xss_process = subprocess.Popen(
-				[blankie.lib_dir + '/xss'],
+				[sys.executable, '-m', 'blankie.xss_helper'],
 				stdout = subprocess.PIPE,
 				env=dict(os.environ, DISPLAY=self.display),
 			)

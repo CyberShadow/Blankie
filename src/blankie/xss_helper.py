@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+# blankie.xss_helper - X11 Screen Saver Extension helper
 
 # Glue between the X11 Screen Saver Extension and Blankie.
 # Implements an X screen saver, which merely communicates

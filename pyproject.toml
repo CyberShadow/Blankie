@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "blankie"
+version = "0.1.0"
+description = "X ScreenSaver manager"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+	"dbus-python",
+	"inotify-simple",
+	"PyGObject",
+	"python-xlib",
+]
+
+[project.scripts]
+blankie = "blankie:main"
+blankie-xss = "blankie.xss_helper:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -19,20 +19,6 @@ run_dir = os.environ.setdefault(
 )
 
 # -----------------------------------------------------------------------------
-# Internal globals
-
-# Allow running Blankie directly from a source checkout or extracted
-# tarball.
-is_source_checkout = __file__.endswith('/src/blankie/__init__.py')
-
-# Library directory.
-if is_source_checkout:
-	# Running from a source checkout
-	lib_dir = os.path.dirname(__file__) + '/../../lib'
-else:
-	lib_dir = '/usr/lib/blankie'
-
-# -----------------------------------------------------------------------------
 # Current state
 
 # These encode the current state of the system, which is used to
