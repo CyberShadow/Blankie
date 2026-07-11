@@ -35,7 +35,13 @@ class EventLoop:
 			task = self.queue.get()
 			(func, args, kwargs) = task
 			log.debug('Calling %r with %r / %r', func, args, kwargs)
-			func(*args, **kwargs)
+			try:
+				func(*args, **kwargs)
+			except Exception:
+				# The event loop must survive task failures: dying
+				# would leave the system unmanaged, and would strand
+				# queued tasks (and any threads waiting on them).
+				log.exception('Unhandled error in event task %r:', func)
 
 _event_loop = EventLoop()
 call = _event_loop.call
