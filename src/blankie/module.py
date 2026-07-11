@@ -18,12 +18,17 @@ class Module:
 	def __init__(self):
 		self.log = log.getChild('modules.' + self.name)
 
-	# Start function.  If called, stop() will also be called exactly once.
+	# Start function.  If called, stop() will also be called - even if
+	# start() raised: the module remains tracked as running, and its
+	# effects (which may be partial) are assumed to be in force.
 	# All resource acquisition and initialization should happen here.
 	def start(self):
 		pass
 
 	# Stop function.  Called if start() was called.
+	# May be called more than once (a failed stop is retried by a
+	# later update), and must therefore tolerate any partial state,
+	# including that of a start() or stop() which failed halfway.
 	def stop(self):
 		pass
 
@@ -62,6 +67,10 @@ class Module:
 module_dirs = []
 
 # Currently running modules.
+# This is an over-approximation of the modules whose effects are
+# actually in force: when a module's start() or stop() fails, the
+# module stays on this list, so that a later update() can converge it
+# (modules' stop() functions tolerate partial state).
 running_modules = []
 
 # The modules we want to be running, according to the last invocation
@@ -124,7 +133,9 @@ def get(module_spec):
 # Start or stop modules, synchronizing running_modules against
 # wanted_modules.
 # The contract this function fulfills is that when it returns,
-# running_modules matches wanted_modules.
+# running_modules matches wanted_modules, except for modules which
+# failed to stop: those remain in running_modules (their effects are
+# assumed to still be in force), to be retried by a later invocation.
 def start_stop_modules():
 	log.trace('Running modules:%s', ''.join('\n- ' + str(m) for m in running_modules))
 	log.trace('Wanted  modules:%s', ''.join('\n- ' + str(m) for m in wanted_modules))
@@ -158,7 +169,9 @@ def start_stop_modules():
 		# 2. Stop modules which we no longer want to be running.
 		# Do this in reverse order of starting them.
 		for i, running_module in reversed(list(enumerate(running_modules))):
-			if running_module not in wanted_modules:
+			if running_module not in wanted_modules and running_module not in errors:
+				# Remove the module before stopping it, so that
+				# re-entrant updates don't try to stop it again.
 				del running_modules[i]
 				log.debug('Stopping module %r', running_module)
 				# It is important that, in case of an error, we revert
@@ -171,6 +184,12 @@ def start_stop_modules():
 				except Exception:
 					log.error('Error when attempting to stop module %r:', str(running_module))
 					traceback.print_exc()
+					# Assume the module's effects are still in force:
+					# put it back, so that a later update() retries the
+					# stop.  (Being in the errors list excludes it from
+					# further attempts within this pass, which
+					# guarantees termination.)
+					running_modules.insert(i, running_module)
 					errors.append(running_module)
 					return True
 				log.debug('Stopped module %r', running_module)
