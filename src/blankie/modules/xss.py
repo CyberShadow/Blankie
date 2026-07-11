@@ -53,7 +53,7 @@ class XSSPerSessionModule(blankie.module.Module):
 				raise blankie.UserError('mod_xss: Failed to start xss.')
 
 			# Start event reader task
-			self.xss_reader_thread = threading.Thread(target=self.xss_reader, args=(self.xss_process.stdout,))
+			self.xss_reader_thread = threading.Thread(target=self.xss_reader, args=(self.xss_process.stdout,), daemon=True)
 			self.xss_reader_thread.start()
 
 			self.log.debug('Started xss (PID %d).', self.xss_process.pid)

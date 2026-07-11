@@ -54,6 +54,7 @@ class TimerModule(blankie.module.Module):
 				function=blankie.daemon.call,
 				args=(self.timer_handle_done,)
 			)
+			self.timer.daemon = True
 			self.timer.start()
 			self.log.debug('Started new timer for %s seconds.', to_sleep)
 

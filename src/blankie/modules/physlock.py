@@ -34,7 +34,8 @@ class PhysLockModule(blankie.module.Module):
 			self.physlock_process = subprocess.Popen(['physlock', *self.physlock_args])
 			self.log.debug('Started physlock (PID %d).', self.physlock_process.pid)
 			self.physlock_thread = threading.Thread(target=self.physlock_waiter,
-													args=(self.physlock_process,))
+													args=(self.physlock_process,),
+													daemon=True)
 			self.physlock_thread.start()
 
 	def stop(self):

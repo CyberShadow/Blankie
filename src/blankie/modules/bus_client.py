@@ -27,7 +27,7 @@ class BusClientModule(blankie.module.Module):
 
 	def start(self):
 		self.running = True
-		self.thread = threading.Thread(target=self.thread_func)
+		self.thread = threading.Thread(target=self.thread_func, daemon=True)
 		self.thread.start()
 
 	def stop(self):

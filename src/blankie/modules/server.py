@@ -35,7 +35,7 @@ class ServerModule(blankie.module.Module):
 		self.server = SocketServer(self)
 
 		# Run reader thread
-		self.server_thread = threading.Thread(target=self.server_thread_func)
+		self.server_thread = threading.Thread(target=self.server_thread_func, daemon=True)
 		self.server_thread.start()
 
 	def stop(self):
@@ -139,6 +139,10 @@ class Handler(socketserver.StreamRequestHandler):
 		self.server.module.server_reader(self)
 
 class SocketServer(socketserver.ThreadingMixIn, socketserver.UnixStreamServer):
+	# Handler threads only pump I/O for the main thread; they must
+	# never keep the interpreter from exiting.
+	daemon_threads = True
+
 	def __init__(self, module):
 		self.module = module
 		self.stopping = False

@@ -65,7 +65,7 @@ class I3LockPerSessionModule(blankie.module.Module):
 
 			# Create a thread waiting for EOF from the pipe, to know when i3lock exits.
 			# (We use this method to avoid polling with e.g. `kill -0`.)
-			self.i3lock_reader_thread = threading.Thread(target=self.i3lock_reader, args=(outer.stdout, self.i3lock_inner_pid,))
+			self.i3lock_reader_thread = threading.Thread(target=self.i3lock_reader, args=(outer.stdout, self.i3lock_inner_pid,), daemon=True)
 			self.i3lock_reader_thread.start()
 
 			self.log.debug('Started i3lock (PID %d).', self.i3lock_inner_pid)

@@ -35,7 +35,7 @@ class TTYIdlePerSessionModule(blankie.module.Module):
 		self.inotify_wd = self.inotify.add_watch(self.tty, flags)
 
 		# Start thread
-		self.tty_thread = INotifyThread()
+		self.tty_thread = INotifyThread(daemon=True)
 		self.tty_thread.module = self
 		self.tty_thread.start()
 

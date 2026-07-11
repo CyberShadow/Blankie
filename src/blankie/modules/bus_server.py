@@ -28,7 +28,7 @@ class BusServerModule(blankie.module.Module):
 		self.server_socket.bind(self.address)
 		self.server_socket.listen()
 
-		self.accept_thread = threading.Thread(target=self.accept_loop)
+		self.accept_thread = threading.Thread(target=self.accept_loop, daemon=True)
 		self.accept_thread.start()
 
 	def stop(self):
@@ -91,7 +91,7 @@ class ClientHandler:
 
 	# Runs on main thread
 	def start(self):
-		self.recv_thread = threading.Thread(target=self.recv_loop)
+		self.recv_thread = threading.Thread(target=self.recv_loop, daemon=True)
 		self.recv_thread.start()
 
 	# Runs on main thread

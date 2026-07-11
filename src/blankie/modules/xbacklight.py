@@ -70,7 +70,7 @@ class XBacklightModule(blankie.module.Module):
 			self.log.debug('Running: %r', args)
 			self.xbacklight_process = subprocess.Popen(args, stdout=subprocess.PIPE)
 			self.log.debug('Started xbacklight (PID %d).', self.xbacklight_process.pid)
-			self.xbacklight_reader_thread = threading.Thread(target=self.xbacklight_reader, args=(self.xbacklight_process.stdout,))
+			self.xbacklight_reader_thread = threading.Thread(target=self.xbacklight_reader, args=(self.xbacklight_process.stdout,), daemon=True)
 			self.xbacklight_reader_thread.start()
 
 	def stop(self):

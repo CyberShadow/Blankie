@@ -32,6 +32,7 @@ class RemoteSenderModule(blankie.module.Module):
 			function=blankie.daemon.call,
 			args=(self.handle_timer,)
 		)
+		self.timer.daemon = True
 		self.timer.start()
 
 	def stop(self):

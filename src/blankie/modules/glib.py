@@ -18,7 +18,7 @@ class GLibModule(blankie.module.Module):
 
 	def start(self):
 		self.mainloop = GLib.MainLoop()
-		self.glib_thread = threading.Thread(target=self.glib_thread_func)
+		self.glib_thread = threading.Thread(target=self.glib_thread_func, daemon=True)
 		self.glib_thread.start()
 
 	def stop(self):
