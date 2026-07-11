@@ -165,17 +165,24 @@ def start(fork=True):
 
 def stop():
 	log.info('Daemon is stopping...')
+
+	# Commit to exiting before attempting any cleanup - nothing below
+	# may be allowed to prevent the event loop from stopping.
+
+	# Ask the daemon to stop, but continue pumping any extant events,
+	# to allow worker threads to exit cleanly.
+	_event_loop.stopping = True
+
 	# Python waits for daemon threads to exit before calling
 	# atexit handlers. Because those threads are stopped in
 	# response to cleanup performed in our atexit handler,
 	# this deadlocks us.  Run the shutdown function manually
 	# to avoid this.
-	shutdown()
 	atexit.unregister(shutdown)
-
-	# Ask the daemon to stop, but continue pumping any extant events,
-	# to allow worker threads to exit cleanly.
-	_event_loop.stopping = True
+	try:
+		shutdown()
+	except Exception:
+		log.exception('Error during shutdown (continuing to exit):')
 
 
 def stop_remote():
