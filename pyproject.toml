@@ -15,9 +15,17 @@ dependencies = [
 	"python-xlib",
 ]
 
+[project.optional-dependencies]
+test = [
+	"pytest",
+]
+
 [project.scripts]
 blankie = "blankie:main"
 blankie-xss = "blankie.xss_helper:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
