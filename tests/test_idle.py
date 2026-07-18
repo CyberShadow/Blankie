@@ -37,3 +37,26 @@ def test_idle_since_without_effective_session_is_infinite(blankie_module, monkey
 	)
 
 	assert blankie_module.get_idle_since() == math.inf
+
+
+def test_sleeping_returns_negative_infinity(blankie_module, monkeypatch):
+	blankie_module.state.sleeping = True
+	monkeypatch.setattr(blankie_module.session, 'get_sessions', lambda: [Session(10.0)])
+
+	assert blankie_module.get_idle_since() == -math.inf
+
+
+def test_power_module_does_not_repeat_action_while_sleeping(blankie_module, monkeypatch):
+	from blankie.modules.power import PowerModule
+
+	blankie_module.state.sleeping = True
+	called = False
+
+	def check_call(_args):
+		nonlocal called
+		called = True
+
+	monkeypatch.setattr('blankie.modules.power.subprocess.check_call', check_call)
+	PowerModule().start()
+
+	assert not called

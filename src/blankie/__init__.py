@@ -49,7 +49,7 @@ state = State()
 #   (or otherwise be incapacitated)
 def get_idle_since():
 	if state.sleeping:
-		return math.inf
+		return -math.inf
 
 	sessions = blankie.session.get_sessions()
 	idle_times = [session.get_idle_since() for session in sessions]
