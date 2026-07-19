@@ -4,6 +4,7 @@
 # "blankie status".
 
 import contextlib
+import itertools
 import json
 import os
 import socketserver
@@ -12,6 +13,9 @@ import threading
 import blankie
 import blankie.server
 import blankie.session
+
+
+wake_lock_ids = itertools.count(1)
 
 class ServerModule(blankie.module.Module):
 	name = 'server'
@@ -71,12 +75,55 @@ class ServerModule(blankie.module.Module):
 		if command == ['server-shutdown-ping']:
 			return  # This was sent just to wake up the accept loop.
 
+		if command == ['wake-lock']:
+			self.server_wake_lock(handler)
+			return
+
 		done_event = threading.Event()
 		blankie.daemon.call(self.server_run_command, handler, done_event, *command)
 
 		# Wait until the event is processed, to avoid the connection
 		# getting closed early.
 		done_event.wait()
+
+	def server_wake_lock(self, handler):
+		spec = ('session.wake_lock', 'wake-lock-%d' % next(wake_lock_ids))
+		attach_done = threading.Event()
+		attach_result = []
+
+		def attach():
+			try:
+				blankie.session.attach(spec)
+			except Exception as error:
+				attach_result.append(error)
+			finally:
+				attach_done.set()
+
+		blankie.daemon.call(attach)
+		attach_done.wait()
+		if attach_result:
+			raise attach_result[0]
+
+		try:
+			handler.wfile.write(b'Wake lock acquired.\n')
+			handler.wfile.flush()
+			handler.rfile.read()
+		finally:
+			detach_done = threading.Event()
+			detach_result = []
+
+			def detach():
+				try:
+					blankie.session.detach(spec)
+				except Exception as error:
+					detach_result.append(error)
+				finally:
+					detach_done.set()
+
+			blankie.daemon.call(detach)
+			detach_done.wait()
+			if detach_result:
+				raise detach_result[0]
 
 	# Handle one command received from the socket.
 	# Runs in the main thread.
