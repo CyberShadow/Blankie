@@ -196,6 +196,21 @@ def test_simultaneous_wake_locks_use_distinct_session_specs(blankie_module, even
 	assert set(detached) == set(attached)
 
 
+def test_wake_lock_connection_adds_and_removes_its_session_spec(server_module):
+	blankie_module, _module = server_module
+	client = connect(blankie_module, 'wake-lock')
+
+	assert read_line(client) == b'Wake lock acquired.\n'
+	assert len(blankie_module.session.session_specs) == 1
+	spec, = blankie_module.session.session_specs
+	assert spec[0] == 'session.wake_lock'
+
+	client.shutdown(socket.SHUT_WR)
+	assert client.makefile('rb').read() == b''
+	client.close()
+	assert not blankie_module.session.session_specs
+
+
 def test_status_lists_wake_lock_sessions_without_legacy_count(blankie_module, event_loop, monkeypatch):
 	from blankie.modules.server import ServerModule
 

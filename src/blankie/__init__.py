@@ -170,6 +170,7 @@ Commands:
   reload       Reload the configuration.
   lock         Lock the system now.
   unlock       Unlock the system now.
+  wake-lock    Inhibit locking and suspend until this command exits.
   attach       Attach to the current session.
   detach       Detach from the current session.
 '''
@@ -208,6 +209,11 @@ Commands:
 
 			case 'status' | 'lock' | 'unlock':
 				sys.stdout.buffer.write(blankie.server.query(*args))
+
+			case 'wake-lock':
+				if len(args) != 1:
+					raise UserError('wake-lock does not accept arguments.')
+				blankie.server.wake_lock()
 
 			case 'attach' | 'detach':
 				blankie.session.remote_attach_or_detach(args[0] == 'attach')

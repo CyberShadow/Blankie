@@ -5,6 +5,7 @@
 import json
 import os
 import socket
+import sys
 
 import blankie
 
@@ -16,6 +17,8 @@ path = os.environ.setdefault('BLANKIE_SOCKET', blankie.run_dir + '/daemon.sock')
 
 # Send a line to the daemon event loop. Return the socket without closing it.
 def _send(*args):
+	message = bytes(json.dumps(args) + '\n', 'utf-8')
+
 	s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 	try:
 		s.connect(path)
@@ -23,8 +26,7 @@ def _send(*args):
 		raise blankie.UserError('Failed to connect to daemon UNIX socket at %r (%s). Is the blankie daemon running?' %
 							   (path, e))
 
-	message = bytes(json.dumps(args) + '\n', 'utf-8')
-	s.send(message)
+	s.sendall(message)
 
 	return s
 
@@ -42,3 +44,14 @@ def query(*args):
 		result = f.read()
 	s.close()
 	return result
+
+# Hold a wake lock until the daemon closes the connection.
+def wake_lock():
+	with _send('wake-lock') as s:
+		with s.makefile('rb') as f:
+			acknowledgement = f.readline()
+			if acknowledgement != b'Wake lock acquired.\n':
+				raise blankie.UserError('Failed to acquire wake lock.')
+			sys.stdout.write('Wake lock acquired.\n')
+			sys.stdout.flush()
+			f.read()
