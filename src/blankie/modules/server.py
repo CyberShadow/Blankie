@@ -7,6 +7,7 @@ import contextlib
 import itertools
 import json
 import os
+import socket
 import socketserver
 import threading
 
@@ -43,16 +44,18 @@ class ServerModule(blankie.module.Module):
 		self.server_thread.start()
 
 	def stop(self):
+		server = self.server
+
 		# We can't directly interrupt the blocking 'accept' easily,
 		# but we can send a dummy command which will cause the server
 		# to check if it should shut down.
-		self.server.stopping = True
-		self.server = None
+		server.interrupt_requests()
 		blankie.server.notify('server-shutdown-ping')
 
 		# Now, just wait for the thread to exit.
 		self.server_thread.join()
 		self.server_thread = None
+		self.server = None
 
 	def server_thread_func(self):
 		server = self.server
@@ -74,9 +77,12 @@ class ServerModule(blankie.module.Module):
 
 		if command == ['server-shutdown-ping']:
 			return  # This was sent just to wake up the accept loop.
+		server = self.server
+		if server is None or server.stopping:
+			return
 
 		if command == ['wake-lock']:
-			self.server_wake_lock(handler)
+			self.server_wake_lock(server, handler)
 			return
 
 		done_event = threading.Event()
@@ -86,14 +92,18 @@ class ServerModule(blankie.module.Module):
 		# getting closed early.
 		done_event.wait()
 
-	def server_wake_lock(self, handler):
+	def server_wake_lock(self, server, handler):
 		spec = ('session.wake_lock', 'wake-lock-%d' % next(wake_lock_ids))
 		attach_done = threading.Event()
 		attach_result = []
+		attached = []
 
 		def attach():
 			try:
+				if server.stopping:
+					return
 				blankie.session.attach(spec)
+				attached.append(None)
 			except Exception as error:
 				attach_result.append(error)
 			finally:
@@ -103,6 +113,8 @@ class ServerModule(blankie.module.Module):
 		attach_done.wait()
 		if attach_result:
 			raise attach_result[0]
+		if not attached:
+			return
 
 		try:
 			handler.wfile.write(b'Wake lock acquired.\n')
@@ -193,4 +205,28 @@ class SocketServer(socketserver.ThreadingMixIn, socketserver.UnixStreamServer):
 	def __init__(self, module):
 		self.module = module
 		self.stopping = False
+		self.request_lock = threading.Lock()
+		self.requests = set()
 		super().__init__(blankie.server.path, Handler)
+
+	def interrupt_requests(self):
+		with self.request_lock:
+			self.stopping = True
+			requests = tuple(self.requests)
+		for request in requests:
+			try:
+				request.shutdown(socket.SHUT_RDWR)
+			except OSError as error:
+				self.module.log.warning('Failed to interrupt request socket: %s', error)
+
+	def process_request(self, request, client_address):
+		with self.request_lock:
+			self.requests.add(request)
+		super().process_request(request, client_address)
+
+	def process_request_thread(self, request, client_address):
+		try:
+			super().process_request_thread(request, client_address)
+		finally:
+			with self.request_lock:
+				self.requests.remove(request)
