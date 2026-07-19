@@ -1,4 +1,5 @@
 import math
+import threading
 
 
 class Session:
@@ -7,6 +8,25 @@ class Session:
 
 	def get_idle_since(self):
 		return self.idle_since
+
+
+def call_from_event_loop(event_loop, func, *args):
+	completed = threading.Event()
+	result = []
+
+	def run():
+		try:
+			result.append((True, func(*args)))
+		except Exception as error:
+			result.append((False, error))
+		finally:
+			completed.set()
+
+	event_loop.call(run)
+	assert completed.wait()
+	succeeded, value = result[0]
+	if not succeeded:
+		raise value
 
 
 def test_idle_since_uses_latest_finite_session(blankie_module, monkeypatch):
@@ -60,3 +80,40 @@ def test_power_module_does_not_repeat_action_while_sleeping(blankie_module, monk
 	PowerModule().start()
 
 	assert not called
+
+
+def test_wake_lock_session_inhibits_idle_aggregation(blankie_module, event_loop, monkeypatch):
+	spec = ('session.wake_lock', 'lock-1')
+	blankie_module.module.module_dirs = [
+		blankie_module.__path__[0] + '/modules',
+	]
+	monkeypatch.setattr(blankie_module.module, 'selectors', {
+		'30-sessions': blankie_module.session.session_selector,
+	})
+	call_from_event_loop(event_loop, blankie_module.session.attach, spec)
+	wake_lock = blankie_module.module.get(spec)
+	assert blankie_module.session.get_sessions() == [wake_lock]
+	monkeypatch.setattr(
+		blankie_module.session,
+		'get_sessions',
+		lambda: [Session(10.0), Session(math.nan), Session(25.0), wake_lock],
+	)
+
+	assert blankie_module.get_idle_since() == math.inf
+
+
+def test_sleeping_returns_negative_infinity_with_wake_lock_session(blankie_module, event_loop, monkeypatch):
+	spec = ('session.wake_lock', 'lock-1')
+	blankie_module.module.module_dirs = [
+		blankie_module.__path__[0] + '/modules',
+	]
+	monkeypatch.setattr(blankie_module.module, 'selectors', {
+		'30-sessions': blankie_module.session.session_selector,
+	})
+	call_from_event_loop(event_loop, blankie_module.session.attach, spec)
+	blankie_module.state.sleeping = True
+	wake_lock = blankie_module.module.get(spec)
+	assert blankie_module.session.get_sessions() == [wake_lock]
+	monkeypatch.setattr(blankie_module.session, 'get_sessions', lambda: [wake_lock])
+
+	assert blankie_module.get_idle_since() == -math.inf
